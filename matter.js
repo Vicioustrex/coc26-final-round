@@ -24,7 +24,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @param {number} h 
          * @returns {void}
          */
-        fromWH(x, y, w, h) {
+        static fromWH(x, y, w, h) {
             return new MBox(x, y, x + w, y + h);
         }
 
@@ -77,12 +77,12 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * 
          * @constructor
          * @param {MBox} dbox 
-         * @param {CanvasImageSource} texture
+         * @param {(number, MObject) => SpriteRef} texturer
          */
-        constructor(dbox, texture) {
+        constructor(dbox, texturer) {
             // dbox: this is used for rendering optimization
             this.dbox = dbox;
-            this.texture = texture;
+            this.texturer = texturer;
         }
     }
 
@@ -97,10 +97,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @param {number} y
          * @param {number} w
          * @param {number} h
-         * @param {CanvasImageSource} texture
+         * @param {(number, MObject) => SpriteRef} texturer
          */
-        constructor(x, y, w, h, texture) {
-            super(MBox.fromWH(x, y, w, h), texture);
+        constructor(x, y, w, h, texturer) {
+            super(MBox.fromWH(x, y, w, h), texturer);
             this.x = x;
             this.y = y;
         }
@@ -109,11 +109,13 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * 
          * @param {CanvasRenderingContext2D} ctx 
          * @param {MCamera} camera 
+         * @param {number} t
+         * @param {number} pixel
          * @returns {void}
          */
-        render(ctx, camera) {
+        render(ctx, camera, t, pixel) {
             const { x, y } = camera.worldToScreen(this.x, this.y);
-            ctx.drawImage(this.texture, x, y);
+            ctx.drawImage(this.texturer(t, this), x, y, pixel);
         }
     }
 
@@ -128,10 +130,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @param {number} y
          * @param {number} w
          * @param {number} h
-         * @param {CanvasImageSource} texture
+         * @param {(number, MObject) => SpriteRef} texturer
          */
-        constructor(x, y, w, h, texture) {
-            super(MBox.fromWH(x, y, w, h), texture);
+        constructor(x, y, w, h, texturer) {
+            super(MBox.fromWH(x, y, w, h), texturer);
             this.hbox = this.dbox;
             this.x = x;
             this.y = y;
@@ -141,11 +143,13 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * 
          * @param {CanvasRenderingContext2D} ctx 
          * @param {MCamera} camera 
+         * @param {number} t
+         * @param {number} pixel
          * @returns {void}
          */
-        render(ctx, camera) {
+        render(ctx, camera, t, pixel) {
             const { x, y } = camera.worldToScreen(this.x, this.y);
-            ctx.drawImage(this.texture, x, y);
+            this.texturer(t, this).draw(ctx, x, y, pixel);
         }
     }
 
@@ -160,10 +164,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @param {number} y
          * @param {number} w
          * @param {number} h
-         * @param {CanvasImageSource} texture
+         * @param {(number, MObject) => SpriteRef} texturer
          */
-        constructor(x, y, w, h, texture) {
-            super(x, y, w, h, texture);
+        constructor(x, y, w, h, texturer) {
+            super(x, y, w, h, texturer);
         }
     }
 
@@ -178,10 +182,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @param {number} y
          * @param {number} w
          * @param {number} h
-         * @param {CanvasImageSource} texture
+         * @param {(number, MObject) => SpriteRef} texturer
          */
-        constructor(x, y, w, h, texture) {
-            super(x, y, w, h, texture);
+        constructor(x, y, w, h, texturer) {
+            super(x, y, w, h, texturer);
         }
     }
 
@@ -196,10 +200,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @param {number} y
          * @param {number} w
          * @param {number} h
-         * @param {CanvasImageSource} texture
+         * @param {(number, MObject) => SpriteRef} texturer
          */
-        constructor(x, y, w, h, maxHealth, texture) {
-            super(x, y, w, h, texture);
+        constructor(x, y, w, h, maxHealth, texturer) {
+            super(x, y, w, h, texturer);
             this.sx = x;
             this.sy = y;
             this.w = w;
@@ -233,19 +237,19 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
         /** Tick the game forward
          * 
          * @param {number} dt 
-         * @param {Object} keys
-         * @param {{ hvel?: number, jump?: number }} attributes 
+         * @param {Object} events
+         * @param {{ hvel?: number, jump?: number }} [attributes={}]
          * @returns {void}
          */
-        tick(dt, keys, attributes) {
+        tick(dt, events, attributes={}) {
             const hvel = attributes.hvel ?? this.engine.hvel;
             const jump = attributes.jump ?? this.engine.jump;
             const { world, gravity, friction } = this.engine;
-            const xAccel = hvel * Math.log(friction);
-            if (keys.KeyA) {
+            const xAccel = -hvel * Math.log(friction);
+            if (events.KeyA) {
                 this.xv -= xAccel * dt;
             }
-            if (keys.KeyD) {
+            if (events.KeyD) {
                 this.xv += xAccel * dt;
             }
             this.x += this.xv * dt;
@@ -262,7 +266,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
             if (this.touching(MSolid, world)) {
                 this.y -= this.yv * dt;
                 this.yv = 0;
-                if (keys.KeyW) {
+                if (events.KeyW) {
                     this.yv = -jump;
                 }
                 this.updateHitbox();
@@ -287,20 +291,20 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @param {number} y
          * @param {number} w
          * @param {number} h
-         * @param {CanvasImageSource} texture
+         * @param {(number, MObject) => SpriteRef} texturer
          */
-        constructor(x, y, w, h, texture) {
-            super(x, y, w, h, 100, texture);
+        constructor(x, y, w, h, texturer) {
+            super(x, y, w, h, 100, texturer);
         }
 
         /** Tick the game forward
          * 
          * @param {number} dt 
-         * @param {Object} keys
+         * @param {Object} events
          * @returns {void}
          */
-        tick(dt, keys) {
-            super.tick(dt, keys);
+        tick(dt, events) {
+            super.tick(dt, events);
         }
     }
 
@@ -331,7 +335,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
                 // find the index at which to put z into indices
                 let i = 0;
                 while (i < this.indices.length && this.indices[i] < z) i ++;
-                this.indices[i].splice(i, 0, z); // At index i, remove 0 elements, and insert z
+                this.indices.splice(i, 0, z); // At index i, remove 0 elements, and insert z
             }
             this.zia[z].push(obj);
             obj.engine = this.engine;
@@ -368,10 +372,11 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
             this.w = width;
             this.h = height;
             this.tsz = tileSize ?? 20;
+            this.viewBox = new MBox(0, 0, 0, 0);
             this.focus(0, 0);
         }
 
-        /** Focus the camera at a particular point.
+        /** Focus the camera at a particular (world) point.
          * 
          * @param {number} x 
          * @param {number} y 
@@ -380,7 +385,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
         focus(x, y) {
             this.focusX = x;
             this.focusY = y;
-            this.viewBox = new MBox(
+            this.viewBox.setWH(
                 this.focusX - this.w / this.tsz / 2,
                 this.focusY - this.h / this.tsz / 2,
                 this.w / this.tsz, this.h / this.tsz
@@ -441,15 +446,18 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @constructor
          * @param {MEngine} engine
          * @param {HTMLCanvasElement} canvas 
-         * @param {number} tileSize
+         * @param {number} [tileSize=36]
+         * @param {number} [resolution=9]
          */
-        constructor(engine, canvas, tileSize) {
+        constructor(engine, canvas, tileSize=36, resolution=9) {
             this.engine = engine;
             this.canvas = canvas;
             this.ctx = canvas.getContext("2d");
             this.w = canvas.width;
             this.h = canvas.height;
-            this.tsz = tileSize ?? 20;
+            this.tsz = tileSize;
+            this.res = resolution;
+            this.pixel = tileSize / resolution;
             this.camera = new MCamera({ width: this.w, height: this.h, tileSize: this.tsz });
         }
 
@@ -457,12 +465,11 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * 
          * @returns {void}
          */
-        render() {
+        render(t) {
             this.camera.focusPlayer(this.engine.player);
             this.engine.world.iterate(obj => {
-                if (this.camera.inView(obj)) obj.render(this.ctx, this.camera);
+                if (this.camera.inView(obj)) obj.render(this.ctx, this.camera, t, this.pixel);
             });
-            this.engine.player.render(this.ctx, this.camera);
         }
     }
 
@@ -473,51 +480,67 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
         /** Constructs an instance of MEngine.
          * 
          * @constructor
-         * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} config
+         * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} [config={}]
          */
-        constructor(config) {
-            const { g, h, f, j } = config;
-            this.gravity = g ?? 1;
-            this.hvel = h ?? 1;
-            this.friction = f ?? 0.001;
-            this.jump = j ?? 5;
+        constructor(config={}) {
+            const { gravity, hvel, friction, jump } = config;
+            this.gravity = gravity ?? 80;
+            this.hvel = hvel ?? 10;
+            this.friction = friction ?? 0.000000001;
+            this.jump = jump ?? 20;
             this.renderer = null;
             this.world = new MWorld(this);
-            this.player = new MPlayer(0, 0, 0.99, 0.9, null);
-            // Everything layer 0 and below is behind the player
-            // Everything layer 1 and above is above the player
-            this.world.add(this.player, 1);
+            
         }
 
         /** Alternative to new MEngine.
          * 
-         * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} options 
+         * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} [options={}]
          * @returns {MEngine}
          */
-        create(options) {
+        static create(options={}) {
             return new MEngine(options);
+        }
+
+        /**
+         * 
+         * @param {number} sx 
+         * @param {number} sy 
+         * @param {number} w 
+         * @param {number} h 
+         * @param {(number, MObject) => SpriteRef} texturer 
+         */
+        createPlayer(sx, sy, w, h, texturer) {
+            this.player = new MPlayer(sx, sy, w, h, texturer);
+            // Everything layer 0 and below is behind the player
+            // Everything layer 1 and above is above the player
+            this.world.add(this.player, 1);
         }
 
         /** Set render configs
          * 
          * @param {HTMLCanvasElement} canvas
          * @param {number} tileSize
+         * @param {number} resolution
          * @returns {MEngine}
          */
-        setRenderConfig(canvas, tileSize) {
-            this.renderer = new MRenderer(this, canvas, tileSize);
+        setRenderConfig(canvas, tileSize, resolution) {
+            this.renderer = new MRenderer(this, canvas, tileSize, resolution);
             return this;
         }
 
+
+
         /** Tick step forward
          * 
+         * @param {number} t 
          * @param {number} dt 
          * @returns {void}
          */
-        tick(dt, keys) {
-            this.renderer.render();
-            this.player.tick(dt, keys);
+        tick(t, dt, events) {
+            this.renderer.render(t);
+            this.player.tick(dt, events);
         }
     }
     return { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine };
-})
+})();
