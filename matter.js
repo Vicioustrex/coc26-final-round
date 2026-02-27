@@ -1,333 +1,523 @@
-/** MBox: an AABB hitbox implementation.
- * 
- */
-class MBox {
-    /** Constructs an image of MBox.
-     * 
-     * @constructor
-     * @param {number} x1 
-     * @param {number} y1 
-     * @param {number} x2 
-     * @param {number} y2 
-     */
-    constructor(x1, y1, x2, y2) {
-        this.set(x1, y1, x2, y2);
-    }
-    
-    /** Alternative to new MBox for width and height
-     * 
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} w 
-     * @param {number} h 
-     */
-    fromWH(x, y, w, h) {
-        return new MBox(x, y, x + w, y + h);
-    }
-
-    /** Sets the hitbox without creating a new instance.
-     * 
-     * @param {number} x1 
-     * @param {number} y1 
-     * @param {number} x2 
-     * @param {number} y2 
-     */
-    set(x1, y1, x2, y2) {
-        // Doing this makes the math easier later on
-        this.x1 = Math.min(x1, x2);
-        this.y1 = Math.min(y1, y2);
-        this.x2 = Math.max(x1, x2);
-        this.y2 = Math.max(y1, y2);
-    }
-
-    /** Sets the hitbox without creating a new instance, for width and height.
-     * 
-     * @param {number} x
-     * @param {number} y 
-     * @param {number} w 
-     * @param {number} h 
-     */
-    setWH(x, y, w, h) {
-        this.set(x, y, x + w, y + h);
-    }
-
-    /** Checks for collision with alternate MBox
-     * 
-     * @param {MBox} that 
-     * @returns 
-     */
-    collision(that) {
-        return (
-            this.x1 <= that.x2 && that.x1 <= this.x2 &&
-            this.y1 <= that.y2 && that.y1 <= this.y2
-        );
-    }
-}
-
-/** MObject: a general object that is rendered.
- * 
- */
-class MObject {
-    /** Constructs an image of MOBject.
-     * 
-     * @constructor
-     * @param {MBox} dbox 
-     * @param {CanvasImageSource} texture
-     */
-    constructor(dbox, texture) {
-        // dbox: this is used for rendering optimization
-        this.dbox = dbox;
-        this.texture = texture;
-    }
-}
-
-/** MDecorative: a decorative object purely for aesthetics, no function.
- * 
- */
-class MDecorative extends MObject {
-    /** Constructs an image of MDecorative.
-     * 
-     * @constructor
-     * @param {number} x
-     * @param {number} y
-     * @param {number} w
-     * @param {number} h
-     * @param {CanvasImageSource} texture
-     */
-    constructor(x, y, w, h, texture) {
-        super(MBox.fromWH(x, y, w, h), texture);
-        this.x = x;
-        this.y = y;
-    }
-
-    /** Renders the thing
-     * 
-     * @param {CanvasRenderingContext2D} ctx 
-     * @param {MCamera} camera 
-     */
-    render(ctx, camera) {
-        const { x, y } = camera.worldToScreen(this.x, this.y);
-        ctx.drawImage(this.texture, x, y);
-    }
-}
-
-/** MBody: anything with a hitbox.
- * 
- */
-class MBody extends MObject {
-    /** Constructs an image of MBody.
-     * 
-     * @constructor
-     * @param {number} x
-     * @param {number} y
-     * @param {number} w
-     * @param {number} h
-     * @param {CanvasImageSource} texture
-     */
-    constructor(x, y, w, h, texture) {
-        super(MBox.fromWH(x, y, w, h), texture);
-        this.hbox = this.dbox;
-        this.x = x;
-        this.y = y;
-    }
-
-    /** Renders the thing
-     * 
-     * @param {CanvasRenderingContext2D} ctx 
-     * @param {MCamera} camera 
-     */
-    render(ctx, camera) {
-        const { x, y } = camera.worldToScreen(this.x, this.y);
-        ctx.drawImage(this.texture, x, y);
-    }
-}
-
-/** MSolid: anything that can be stood upon; a block.
- * 
- */
-class MSolid extends MBody {
-    /** Constructs an image of MSolid.
-     * 
-     * @constructor
-     * @param {number} x
-     * @param {number} y
-     * @param {number} w
-     * @param {number} h
-     * @param {CanvasImageSource} texture
-     */
-    constructor(x, y, w, h, texture) {
-        super(x, y, w, h, texture);
-    }
-}
-
-/** MSolid: anything that can be stood upon; a block.
- * 
- */
-class MSolid extends MBody {
-    /** Constructs an image of MSolid.
-     * 
-     * @constructor
-     * @param {number} x
-     * @param {number} y
-     * @param {number} w
-     * @param {number} h
-     * @param {CanvasImageSource} texture
-     */
-    constructor(x, y, w, h, texture) {
-        super(x, y, w, h, texture);
-    }
-}
-
-/** MHazard: any static object that can kill you.
- * 
- */
-class MHazard extends MBody {
-    /** Constructs an image of MHazard.
-     * 
-     * @constructor
-     * @param {number} x
-     * @param {number} y
-     * @param {number} w
-     * @param {number} h
-     * @param {CanvasImageSource} texture
-     */
-    constructor(x, y, w, h, texture) {
-        super(x, y, w, h, texture);
-    }
-}
-
-/** MPlayer: the player.
- * 
- */
-class MPlayer extends MBody {
-    /** Constructs an image of MPlayer.
-     * 
-     * @constructor
-     * @param {number} x
-     * @param {number} y
-     * @param {number} w
-     * @param {number} h
-     * @param {CanvasImageSource} texture
-     */
-    constructor(x, y, w, h, texture) {
-        super(x, y, w, h, texture);
-        this.sx = x;
-        this.sy = y;
-        this.w = w;
-        this.h = h;
-        this.xv = 0;
-        this.yv = 0;
-    }
-
-    /** Update hitbox
+const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
+    /** MBox: an AABB hitbox implementation.
      * 
      */
-    updateHitbox() {
-        this.hbox.setWH(this.x, this.y, this.w, this.h);
-    }
-
-    /** Goes through array, returns first element touching of type
-     * 
-     * @param {typeof MObject} type
-     * @param {MObject[]} arr 
-     */
-    touching(arr) {
-
-    }
-
-    /** Tick the game forward
-     * 
-     * @param {number} dt 
-     * @param {Object} keys
-     * @param {MEngine} engine 
-     */
-    tick(dt, keys, engine) {
-        const { world, gravity, hvel, friction, jump } = engine.world;
-        const objs = world.objs;
-        const xAccel = hvel * Math.log(friction) * delta;
-        if (keys.KeyA) {
-            this.xv -= xAccel;
+    class MBox {
+        /** Constructs an instance of MBox.
+         * 
+         * @constructor
+         * @param {number} x1 
+         * @param {number} y1 
+         * @param {number} x2 
+         * @param {number} y2 
+         */
+        constructor(x1, y1, x2, y2) {
+            this.engine = null;
+            this.set(x1, y1, x2, y2);
         }
-        if (keys.KeyD) {
-            this.xv += xAccel;
-        }
-        this.x += this.xv;
-        this.xv *= friction;
         
-    }
-}
+        /** Alternative to new MBox for width and height
+         * 
+         * @param {number} x 
+         * @param {number} y 
+         * @param {number} w 
+         * @param {number} h 
+         * @returns {void}
+         */
+        fromWH(x, y, w, h) {
+            return new MBox(x, y, x + w, y + h);
+        }
 
-/** MEngine class. Handles platforming logic.
- * 
- */
-class MEngine {
-    /** Constructs an instance of MEngine.
+        /** Sets the hitbox without creating a new instance.
+         * 
+         * @param {number} x1 
+         * @param {number} y1 
+         * @param {number} x2 
+         * @param {number} y2 
+         * @returns {void}
+         */
+        set(x1, y1, x2, y2) {
+            // Doing this makes the math easier later on
+            this.x1 = Math.min(x1, x2);
+            this.y1 = Math.min(y1, y2);
+            this.x2 = Math.max(x1, x2);
+            this.y2 = Math.max(y1, y2);
+        }
+
+        /** Sets the hitbox without creating a new instance, for width and height.
+         * 
+         * @param {number} x
+         * @param {number} y 
+         * @param {number} w 
+         * @param {number} h 
+         * @returns {void}
+         */
+        setWH(x, y, w, h) {
+            this.set(x, y, x + w, y + h);
+        }
+
+        /** Checks for collision with alternate MBox
+         * 
+         * @param {MBox} that 
+         * @returns {boolean}
+         */
+        collision(that) {
+            return (
+                this.x1 <= that.x2 && that.x1 <= this.x2 &&
+                this.y1 <= that.y2 && that.y1 <= this.y2
+            );
+        }
+    }
+
+    /** MObject: a general object that is rendered.
      * 
-     * @constructor
-     * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} options 
      */
-    constructor(options) {
-        const { g, h, f, j } = options;
-        this.gravity = g ?? 1;
-        this.hvel = h ?? 1;
-        this.friction = f ?? 0.5;
-        this.jump = j ?? 5;
-
-        this.epsilon = 0.001;
+    class MObject {
+        /** Constructs an instance of MOBject.
+         * 
+         * @constructor
+         * @param {MBox} dbox 
+         * @param {CanvasImageSource} texture
+         */
+        constructor(dbox, texture) {
+            // dbox: this is used for rendering optimization
+            this.dbox = dbox;
+            this.texture = texture;
+        }
     }
 
-    /** Alternative to new MEngine.
+    /** MDecorative: a decorative object purely for aesthetics, no function.
      * 
-     * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} options 
-     * @returns 
      */
-    create(options) {
-        return new MEngine(options);
+    class MDecorative extends MObject {
+        /** Constructs an instance of MDecorative.
+         * 
+         * @constructor
+         * @param {number} x
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
+         * @param {CanvasImageSource} texture
+         */
+        constructor(x, y, w, h, texture) {
+            super(MBox.fromWH(x, y, w, h), texture);
+            this.x = x;
+            this.y = y;
+        }
+
+        /** Renders the thing
+         * 
+         * @param {CanvasRenderingContext2D} ctx 
+         * @param {MCamera} camera 
+         * @returns {void}
+         */
+        render(ctx, camera) {
+            const { x, y } = camera.worldToScreen(this.x, this.y);
+            ctx.drawImage(this.texture, x, y);
+        }
     }
-}
 
-//matter js setuip
-const { 
-    Engine: MEngine, 
-    Bodies: MBodies, 
-    Body: MBody,
-    World: MWorld, 
-    Events: MEvents
-} = Matter;
+    /** MBody: anything with a hitbox.
+     * 
+     */
+    class MBody extends MObject {
+        /** Constructs an instance of MBody.
+         * 
+         * @constructor
+         * @param {number} x
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
+         * @param {CanvasImageSource} texture
+         */
+        constructor(x, y, w, h, texture) {
+            super(MBox.fromWH(x, y, w, h), texture);
+            this.hbox = this.dbox;
+            this.x = x;
+            this.y = y;
+        }
 
-const mEngine = MEngine.create({ 
-    gravity: { 
-        x: 0, 
-        y: 0 
-    } 
-});
-const mWorld = mEngine.world;
-
-const mContacts = { 
-    grounded: false, 
-    left: false, 
-    right: false,
-     ceiling: false 
-};
-let mPlayerBody = null;
-let mBlockBodies = [];
-let mCpuBodies = [];
-
-function _syncContacts(event) {
-    for (const pair of event.pairs) {
-        if (!mPlayerBody) continue;
-        if (pair.bodyA !== mPlayerBody && pair.bodyB !== mPlayerBody) continue;
-
-        const isA = pair.bodyA === mPlayerBody;
-        const n = pair.collision.normal;
-        const nx = isA ?  n.x : -n.x;
-        const ny = isA ?  n.y : -n.y;
-
-        if (ny >  0.5) mContacts.grounded = true;
-        if (ny < -0.5) mContacts.ceiling = true;
-        if (nx < -0.5) mContacts.left = true;
-        if (nx >  0.5) mContacts.right = true;
+        /** Renders the thing
+         * 
+         * @param {CanvasRenderingContext2D} ctx 
+         * @param {MCamera} camera 
+         * @returns {void}
+         */
+        render(ctx, camera) {
+            const { x, y } = camera.worldToScreen(this.x, this.y);
+            ctx.drawImage(this.texture, x, y);
+        }
     }
-}
-MEvents.on(mEngine, 'collisionStart',  _syncContacts);
-MEvents.on(mEngine, 'collisionActive', _syncContacts);
+
+    /** MSolid: anything that can be stood upon; a block.
+     * 
+     */
+    class MSolid extends MBody {
+        /** Constructs an instance of MSolid.
+         * 
+         * @constructor
+         * @param {number} x
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
+         * @param {CanvasImageSource} texture
+         */
+        constructor(x, y, w, h, texture) {
+            super(x, y, w, h, texture);
+        }
+    }
+
+    /** MHazard: any static object that can kill you.
+     * 
+     */
+    class MHazard extends MBody {
+        /** Constructs an instance of MHazard.
+         * 
+         * @constructor
+         * @param {number} x
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
+         * @param {CanvasImageSource} texture
+         */
+        constructor(x, y, w, h, texture) {
+            super(x, y, w, h, texture);
+        }
+    }
+
+    /** MEntity: any movable entity.
+     * 
+     */
+    class MEntity extends MBody {
+        /** Constructs an instance of MEntity.
+         * 
+         * @constructor
+         * @param {number} x
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
+         * @param {CanvasImageSource} texture
+         */
+        constructor(x, y, w, h, maxHealth, texture) {
+            super(x, y, w, h, texture);
+            this.sx = x;
+            this.sy = y;
+            this.w = w;
+            this.h = h;
+            this.xv = 0;
+            this.yv = 0;
+            this.maxHealth = maxHealth;
+            this.health = this.maxHealth;
+        }
+
+        /** Update hitbox
+         * 
+         * @returns {void}
+         */
+        updateHitbox() {
+            this.hbox.setWH(this.x, this.y, this.w, this.h);
+        }
+
+        /** Goes through array, returns first element touching of type
+         * 
+         * @param {typeof MObject} type
+         * @param {MWorld} world
+         * @returns {MObject?}
+         */
+        touching(type, world) {
+            return world.iterate(obj => {
+                if (obj instanceof type && obj?.hbox?.collision?.(this.hbox)) return obj;
+            });
+        }
+
+        /** Tick the game forward
+         * 
+         * @param {number} dt 
+         * @param {Object} keys
+         * @param {{ hvel?: number, jump?: number }} attributes 
+         * @returns {void}
+         */
+        tick(dt, keys, attributes) {
+            const hvel = attributes.hvel ?? this.engine.hvel;
+            const jump = attributes.jump ?? this.engine.jump;
+            const { world, gravity, friction } = this.engine;
+            const xAccel = hvel * Math.log(friction);
+            if (keys.KeyA) {
+                this.xv -= xAccel * dt;
+            }
+            if (keys.KeyD) {
+                this.xv += xAccel * dt;
+            }
+            this.x += this.xv * dt;
+            this.xv *= Math.pow(friction, dt);
+            this.updateHitbox();
+            if (this.touching(MSolid, world)) {
+                this.x -= this.xv * dt;
+                this.xv = 0;
+                this.updateHitbox();
+            }
+            this.yv += gravity * dt;
+            this.y += this.yv * dt;
+            this.updateHitbox();
+            if (this.touching(MSolid, world)) {
+                this.y -= this.yv * dt;
+                this.yv = 0;
+                if (keys.KeyW) {
+                    this.yv = -jump;
+                }
+                this.updateHitbox();
+            }
+            if (this.touching(MHazard, world)) {
+                this.x = this.sx;
+                this.y = this.sy;
+                this.health = this.maxHealth;
+                this.updateHitbox();
+            }
+        }
+    }
+
+    /** MPlayer: the player.
+     * 
+     */
+    class MPlayer extends MEntity {
+        /** Constructs an instance of MPlayer.
+         * 
+         * @constructor
+         * @param {number} x
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
+         * @param {CanvasImageSource} texture
+         */
+        constructor(x, y, w, h, texture) {
+            super(x, y, w, h, 100, texture);
+        }
+
+        /** Tick the game forward
+         * 
+         * @param {number} dt 
+         * @param {Object} keys
+         * @returns {void}
+         */
+        tick(dt, keys) {
+            super.tick(dt, keys);
+        }
+    }
+
+    /** MWorld class.
+     * 
+     */
+    class MWorld {
+        /** Constructs an instance of MWorld.
+         * 
+         * @constructor
+         */
+        constructor(engine) {
+            // z indexed array
+            this.zia = {};
+            this.indices = []; // important: must ALWAYS be in ascending order
+            this.engine = engine;
+        }
+
+        /** Adds an object to the MWorld.
+         * 
+         * @param {MObject} obj 
+         * @param {number} [z=0]
+         * @returns {void}
+         */
+        add(obj, z=0) {
+            if (!this.zia[z]) {
+                this.zia[z] = [];
+                // find the index at which to put z into indices
+                let i = 0;
+                while (i < this.indices.length && this.indices[i] < z) i ++;
+                this.indices[i].splice(i, 0, z); // At index i, remove 0 elements, and insert z
+            }
+            this.zia[z].push(obj);
+            obj.engine = this.engine;
+        }
+
+        /** Iterates through the z indexed array with a callback. If the callback
+         * returns a value, it breaks and returns that value.
+         * 
+         * @param {MObject => any} callback 
+         * @returns {any}
+         */
+        iterate(callback) {
+            // go through in ASCENDING order
+            for (const i of this.indices) {
+                for (const obj of this.zia[i]) {
+                    const retval = callback(obj);
+                    if (typeof retval !== "undefined") return retval;
+                }
+            }
+        }
+    }
+
+    /** MCamera class. Moves between world and screen, also determines if in view.
+     * 
+     */
+    class MCamera {
+        /** Constructs an instance of MCamera.
+         * 
+         * @constructor
+         * @param {{ width?: number, height?: number, tileSize?: number }} config 
+         */
+        constructor(config) {
+            const { width, height, tileSize } = config;
+            this.w = width;
+            this.h = height;
+            this.tsz = tileSize ?? 20;
+            this.focus(0, 0);
+        }
+
+        /** Focus the camera at a particular point.
+         * 
+         * @param {number} x 
+         * @param {number} y 
+         * @returns {void}
+         */
+        focus(x, y) {
+            this.focusX = x;
+            this.focusY = y;
+            this.viewBox = new MBox(
+                this.focusX - this.w / this.tsz / 2,
+                this.focusY - this.h / this.tsz / 2,
+                this.w / this.tsz, this.h / this.tsz
+            );
+        }
+
+        /** Focus the camera at the player.
+         * 
+         * @param {MPlayer} player 
+         * @returns {void}
+         */
+        focusPlayer(player) {
+            this.focus(player.x + player.w / 2, player.y + player.h / 2);
+        }
+
+        /** Returns true if the object is currently in view.
+         * 
+         * @param {*} obj 
+         * @returns {boolean}
+         */
+        inView(obj) {
+            return obj?.dbox?.collision?.(this.viewBox) ?? false;    
+        }
+
+        /** Takes world coordinates, returns screen coordinates.
+         * 
+         * @param {number} x 
+         * @param {number} y 
+         * @returns {{ x: number, y: number }}
+         */
+        worldToScreen(x, y) {
+            return {
+                x: (x - this.focusX) * this.tsz + this.w / 2,
+                y: (y - this.focusY) * this.tsz + this.h / 2,
+            };
+        }
+
+        /** Takes screen coordinates, returns world coordinates.
+         * 
+         * @param {number} x 
+         * @param {number} y 
+         * @returns {{ x: number, y: number }}
+         */
+        screenToWorld(x, y) {
+            return {
+                x: (x - this.w / 2) / this.tsz + this.focusX,
+                y: (y - this.w / 2) / this.tsz + this.focusY,
+            };
+        }
+    }
+
+    /** MRenderer class. Handles rendering logic.
+     * 
+     */
+    class MRenderer {
+        /** Constructs an instance of MCamera.
+         * 
+         * @constructor
+         * @param {MEngine} engine
+         * @param {HTMLCanvasElement} canvas 
+         * @param {number} tileSize
+         */
+        constructor(engine, canvas, tileSize) {
+            this.engine = engine;
+            this.canvas = canvas;
+            this.ctx = canvas.getContext("2d");
+            this.w = canvas.width;
+            this.h = canvas.height;
+            this.tsz = tileSize ?? 20;
+            this.camera = new MCamera({ width: this.w, height: this.h, tileSize: this.tsz });
+        }
+
+        /** Renders everything.
+         * 
+         * @returns {void}
+         */
+        render() {
+            this.camera.focusPlayer(this.engine.player);
+            this.engine.world.iterate(obj => {
+                if (this.camera.inView(obj)) obj.render(this.ctx, this.camera);
+            });
+            this.engine.player.render(this.ctx, this.camera);
+        }
+    }
+
+    /** MEngine class. Handles platforming logic.
+     * 
+     */
+    class MEngine {
+        /** Constructs an instance of MEngine.
+         * 
+         * @constructor
+         * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} config
+         */
+        constructor(config) {
+            const { g, h, f, j } = config;
+            this.gravity = g ?? 1;
+            this.hvel = h ?? 1;
+            this.friction = f ?? 0.001;
+            this.jump = j ?? 5;
+            this.renderer = null;
+            this.world = new MWorld(this);
+            this.player = new MPlayer(0, 0, 0.99, 0.9, null);
+            // Everything layer 0 and below is behind the player
+            // Everything layer 1 and above is above the player
+            this.world.add(this.player, 1);
+        }
+
+        /** Alternative to new MEngine.
+         * 
+         * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} options 
+         * @returns {MEngine}
+         */
+        create(options) {
+            return new MEngine(options);
+        }
+
+        /** Set render configs
+         * 
+         * @param {HTMLCanvasElement} canvas
+         * @param {number} tileSize
+         * @returns {MEngine}
+         */
+        setRenderConfig(canvas, tileSize) {
+            this.renderer = new MRenderer(this, canvas, tileSize);
+            return this;
+        }
+
+        /** Tick step forward
+         * 
+         * @param {number} dt 
+         * @returns {void}
+         */
+        tick(dt, keys) {
+            this.renderer.render();
+            this.player.tick(dt, keys);
+        }
+    }
+    return { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine };
+})
