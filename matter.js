@@ -114,8 +114,12 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @returns {void}
          */
         render(ctx, camera, t, pixel) {
-            const { x, y } = camera.worldToScreen(this.x, this.y);
-            ctx.drawImage(this.texturer(t, this), x, y, pixel);
+            //the horror of destructoring, to add a break or to not add a break
+            const { 
+                x, 
+                y 
+            } = camera.worldToScreen(this.x, this.y);
+            this.texturer(t, this).draw(ctx, x, y, pixel, this.facing ?? 1);
         }
     }
 
@@ -261,9 +265,11 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
                 this.updateHitbox();
             }
             this.yv += gravity * dt;
+            this.grounded = false;
             this.y += this.yv * dt;
             this.updateHitbox();
             if (this.touching(MSolid, world)) {
+                this.grounded = true;
                 this.y -= this.yv * dt;
                 this.yv = 0;
                 if (events.KeyW) {
@@ -295,6 +301,8 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          */
         constructor(x, y, w, h, texturer) {
             super(x, y, w, h, 100, texturer);
+            this.state = 'idle';
+            this.facing = 1; // 1 = right, -1 = left
         }
 
         /** Tick the game forward
@@ -305,6 +313,19 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          */
         tick(dt, events) {
             super.tick(dt, events);
+
+            //track facing direction
+            if (events.KeyA) this.facing = -1;
+            if (events.KeyD) this.facing = 1;
+
+            //derive animation state from physics
+            if (!this.grounded) {
+                this.state = this.yv < 0 ? 'jump' : 'fall';
+            } else if (Math.abs(this.xv) > 0.5) {
+                this.state = 'run';
+            } else {
+                this.state = 'idle';
+            }
         }
     }
 

@@ -40,7 +40,24 @@
     <script type>
         const engine = MEngine.create({});
         engine.setRenderConfig(canvas, 36, 9);
-        engine.createPlayer(0, 0, 16 / 9, 14 / 9, (t, player) => gfx.player.idle[0]);
+        
+        const ANIM_FPS = {
+            idle: 4,
+            run:  8,
+            jump: 12,
+            fall: 8,
+        };
+
+        engine.createPlayer(0, 0, 16 / 9, 14 / 9, (t, player) => {
+            const state  = player.state ?? 'idle';
+            const frames = gfx.player[state] ?? gfx.player.idle;
+            const fps    = ANIM_FPS[state] ?? 6;
+            const frameCount = Object.keys(frames).length;
+            const frame  = Math.floor(t * fps) % frameCount;
+            return frames[frame];
+        });
+        
+        //engine.createPlayer(0, 0, 16 / 9, 14 / 9, (t, player) => gfx.player.idle[0]);
 
         const block = (t, block) => gfx.tiles.A.yyyy;
 
