@@ -49,3 +49,9 @@ function resizeCanvasAndScale() {
 }
 //run
 resizeCanvasAndScale();
+
+window.addEventListener("resize", function() {
+    resizeCanvasAndScale();
+    // if you need to reposition DOM UI elements or recompute minimap, do that here
+    //if (typeof minimap !== 'undefined' && minimap.init) minimap.init();
+});

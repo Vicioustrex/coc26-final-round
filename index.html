@@ -54,21 +54,75 @@
         engine.world.add(new MSolid(9, 5, 1, 1, block));
         engine.world.add(new MSolid(9, 4, 1, 1, block));
         engine.world.add(new MSolid(9, 3, 1, 1, block));
-
-        let start = Date.now();
-        let past = Date.now();
         
+        let lastTime = performance.now();
+        let firstTime = performance.now();
+        let frameCount = 0, dtMs, dt, tMs, t, fps;
 
-        function anime() {
-            ctx.fillStyle = "#000000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            const dt = Math.min((Date.now() - past) / 1000, 0.1);
-            const t = (Date.now() - start) / 1000;
-            engine.tick(t, dt, events);
-            past = Date.now();
-            requestAnimationFrame(anime);
+        //a render loop with a timestamp for dt updating @Judges
+        const render = (timestamp) => {
+            try {
+                //prefer the rAF timestamp when present
+                const now = typeof timestamp === "number" ? timestamp : performance.now();
+
+                //dt in milliseconds, never negative
+                dtMs = Math.max(0, now - lastTime);
+                tMs = Math.max(0, now - firstTime);
+
+                lastTime = now;
+
+                //dt in seconds (clamped to avoid huge jumps after tab hidden)
+                dt = Math.min(dtMs / 1000, 0.1);
+                t = tMs / 1000;
+                fps = dtMs > 0 ? Math.round(1000 / dtMs) : fps;
+
+                ctx.fillRect(0, 0, canvas.width / dprVal, canvas.height / dprVal);
+
+                //run the game based on deltatime
+                engine.tick(t, dt, events);
+                            
+                //frameCount
+                frameCount++;
+            } catch (e) {
+                console.error("Main loop error\n" + e.stack);
+            }
+        };
+
+        //Replace interval with rAF
+        let rafId = null;
+        let running = true;
+
+        //pause when tab hidden to avoid wasted frames @Judges
+        document.addEventListener("visibilitychange", () => {
+            running = !document.hidden;
+            if (running && rafId === null) {
+                rafId = requestAnimationFrame(loop);
+            }
+            if (!running && rafId !== null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+        });
+        /**
+        * main animation loop that requests frames and triggers rendering while the game is running
+        * @param {number} now - the current timestamp provided by requestanimationframe
+        * @returns {void}
+        */
+        function loop(now) {
+            //if (!debug.freeze) {
+            if (!running) {
+                rafId = null;
+                return;
+            }
+            render(now);
+            rafId = requestAnimationFrame(loop);
+            //}
+            //console.info(debug.freeze);
         }
-        anime();
+
+        //start
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(loop);
     </script>
 </html>
 
