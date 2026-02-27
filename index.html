@@ -41,6 +41,9 @@
         const engine = MEngine.create({});
         engine.setRenderConfig(canvas, 36, 9);
         
+        //for testing
+        engine.renderer.debug = true;
+
         const ANIM_FPS = {
             idle: 4,
             run:  8,
@@ -48,15 +51,29 @@
             fall: 8,
         };
 
-        engine.createPlayer(0, 0, 16 / 9, 14 / 9, (t, player) => {
-            const state  = player.state ?? 'idle';
+        engine.createPlayer(0, 0, 1.0, 1.4, (t, player) => { 
+            const state = player.state ?? 'idle';
             const frames = gfx.player[state] ?? gfx.player.idle;
-            const fps    = ANIM_FPS[state] ?? 6;
-            const frameCount = Object.keys(frames).length;
-            const frame  = Math.floor(t * fps) % frameCount;
+            const fps = ANIM_FPS[state] ?? 6;
+            const count = Object.keys(frames).length;
+            let frame;
+
+            //if you prefer chaining if else statements you need help
+            switch (state) {
+                case 'jump':
+                case 'fall': { 
+                    frame = Math.min(count - 1, Math.floor((player.airTime ?? 0) * fps));
+                    break;
+                }
+                default: { 
+                    frame = Math.floor(t * fps) % count;
+                }
+            }
+            
+            //just in case yk?
+            frame = Math.max(0, Math.min(count - 1, frame));
             return frames[frame];
         });
-        
         //engine.createPlayer(0, 0, 16 / 9, 14 / 9, (t, player) => gfx.player.idle[0]);
 
         const block = (t, block) => gfx.tiles.A.yyyy;
