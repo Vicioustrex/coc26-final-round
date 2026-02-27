@@ -310,7 +310,11 @@
             constructor(x, y, w, h, texturer) {
                 super(x, y, w, h, 100, texturer);
                 this.state = 'idle';
-                this.facing = 1; // 1 = right, -1 = left
+                this.facing = 1;
+                this.groundPounding = false;
+                this.groundPoundTime = 0;
+                this.impactTime = null;
+                this.prevKeyS = false;
             }
 
             /** Tick the game forward
@@ -318,16 +322,48 @@
              * @param {number} dt 
              * @param {Object} events
              * @returns {void}
-             */
+             */ 
             tick(dt, events) {
-                super.tick(dt, events);
+                const canGroundPound = !this.grounded && !this.groundPounding && (this.airTime ?? 0) > 0.1;
+                const keySJustPressed = events.KeyS && !this.prevKeyS; 
 
-                //track facing direction
+                if (canGroundPound && keySJustPressed) {
+                    this.groundPounding = true;
+                    this.groundPoundTime = 0;
+                    this.impactTime = null;
+                    this.yv = this.engine.jump * this.engine.groundPoundMult;
+                }
+
+                this.prevKeyS = events.KeyS;
+
+                if (this.groundPounding) this.groundPoundTime += dt;
+                if (this.impactTime !== null) this.impactTime += dt;
+
+                const physEvents = this.groundPounding
+                    ? { ...events, KeyW: false, KeyA: false, KeyD: false }
+                    : events;
+
+                super.tick(dt, physEvents);
+
                 if (events.KeyA) this.facing = -1;
                 if (events.KeyD) this.facing = 1;
 
-                //derive animation state from physics
-                if (!this.grounded) {
+                if (this.groundPounding && this.grounded) {
+                    this.groundPounding = false;
+                    this.impactTime = 0;
+                    this.engine.onGroundPound?.();
+                }
+
+                const impactDuration = 0.4;
+                if (this.impactTime !== null && this.impactTime > impactDuration) {
+                    this.impactTime = null;
+                }
+
+                if (this.groundPounding) {
+                    this.state = 'groundpound';
+                } else if (this.impactTime !== null) {
+                    this.state = 'groundpoundimpact';
+                } else if (!this.grounded) {
                     this.airTime = (this.airTime ?? 0) + dt;
                     this.state = this.yv < 0 ? 'jump' : 'fall';
                 } else {
@@ -335,6 +371,7 @@
                     this.state = Math.abs(this.xv) > 0.5 ? 'run' : 'idle';
                 }
             }
+            
         }
 
         /** MWorld class.
@@ -531,14 +568,14 @@
              * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} [config={}]
              */
             constructor(config={}) {
-                const { gravity, hvel, friction, jump } = config;
+                const { gravity, hvel, friction, jump, groundPoundMult } = config;
                 this.gravity = gravity ?? 80;
                 this.hvel = hvel ?? 10;
                 this.friction = friction ?? 0.000000001;
                 this.jump = jump ?? 20;
+                this.groundPoundMult = groundPoundMult ?? 2;
                 this.renderer = null;
                 this.world = new MWorld(this);
-                
             }
 
             /** Alternative to new MEngine.

@@ -41,14 +41,41 @@
         const engine = MEngine.create({});
         engine.setRenderConfig(canvas, 36, 9);
         
+        
+
         //for testing
         engine.renderer.debug = true;
 
+        const shakes = [];
+        const shake = { x: 0, y: 0 };
+
+        class Shake {
+            constructor(n) {
+                this.n = n;
+            }
+            active(increment) {
+                shake.x = (Math.random() * 2 - 1) * this.n;
+                shake.y = (Math.random() * 2 - 1) * this.n;
+                this.n -= 0.5;
+                if (this.n < 0) {
+                    shake.x = 0;
+                    shake.y = 0;
+                    shakes.splice(increment, 1);
+                }
+            }
+        }
+
+        //make my life less stressful than it already is
+        const addShake = (power) => shakes.push(new Shake(power));
+        engine.onGroundPound = () => addShake(10);
+        engine.groundPoundMult = 2;
         const ANIM_FPS = {
             idle: 4,
             run:  8,
             jump: 12,
             fall: 8,
+            groundpound: 10,
+            groundpoundimpact: 10,
         };
 
         engine.createPlayer(0, 0, 1.0, 1.4, (t, player) => { 
@@ -61,11 +88,20 @@
             //if you prefer chaining if else statements you need help
             switch (state) {
                 case 'jump':
-                case 'fall': { 
+                case 'fall': {
                     frame = Math.min(count - 1, Math.floor((player.airTime ?? 0) * fps));
                     break;
                 }
-                default: { 
+                case 'groundpound': {
+                    frame = 0;
+                    break;
+                }
+                case 'groundpoundimpact': {
+                    //play impact frames forward once then hold last
+                    frame = Math.min(count - 1, Math.floor((player.impactTime ?? 0) * fps));
+                    break;
+                }
+                default: {
                     frame = Math.floor(t * fps) % count;
                 }
             }
@@ -114,9 +150,12 @@
 
                 ctx.fillRect(0, 0, width, height);
 
-                //run the game based on deltatime
-                engine.tick(t, dt, events);
-                            
+                shakes.forEach((s, i) => s.active(i));
+
+                ctx.save();
+                    ctx.translate(shake.x, shake.y);
+                    engine.tick(t, dt, events);
+                ctx.restore();
                 //frameCount
                 frameCount++;
             } catch (e) {

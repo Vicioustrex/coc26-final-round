@@ -1447,3 +1447,10 @@ class Spritesheet {
 
 const spritesheet = new Spritesheet(300, 300);
 const gfx = spritesheet.store(palette, gfxData);
+
+gfx.player.groundpoundimpact = {
+    0: gfx.player.groundpound[1],
+    1: gfx.player.groundpound[2],
+    2: gfx.player.groundpound[3],
+    3: gfx.player.groundpound[4],
+};
