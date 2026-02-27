@@ -1,3 +1,33 @@
+/**
+ * Returns a 4-char adjacency key for autotiling.
+ * Checks top, right, bottom, left — matching only the same character.
+ *
+ * @param {string[]} bitmap
+ * @param {number} row
+ * @param {number} col
+ * @param {string} ch
+ * @returns {string}
+ */
+function computeAdjacency(bitmap, row, col, ch) {
+    const top = bitmap[row - 1]?.[col] === ch ? 'y' : 'n';
+    const right = bitmap[row]?.[col + 1] === ch ? 'y' : 'n';
+    const bottom = bitmap[row + 1]?.[col] === ch ? 'y' : 'n';
+    const left = bitmap[row]?.[col - 1] === ch ? 'y' : 'n';
+    return top + right + bottom + left;
+}
+
+/** 
+ * Builds a texturer that reads obj.tileKey to pick the right autotile variant
+ * Falls back to yyyy if the key is missing from the tileset.
+ *
+ * @param {Object} tileset - like gfx.tiles.A
+ * @returns {(t, obj) => SpriteRef}
+ */
+function makeAutoTexturer(tileset) {
+    return (t, obj) => tileset[obj.tileKey] ?? tileset.yyyy;
+}
+
+
 const roomTemplates = {
 
     A: [
@@ -91,42 +121,112 @@ const worldAssembly = [
 ];
 
 
-
-class WorldBuilder {
+/**
+ * AutoTiler
+ * Knows which bitmap characters map to which tilesets,
+ * computes TRBL adjacency keys, and builds WorldBuilder registries.
+ */
+class AutoTiler {
     /**
-     * @param {MEngine} engine
-     * @param {number}  [blockSize=1]  - world-unit size of each tile character
-     * @param {(t, obj) => SpriteRef} [solidTexturer]
-     * @param {(t, obj) => SpriteRef} [hazardTexturer]
+     * @param {Object.<string, { tileset: Object, matchChar?: string }>} tilemap
+     *   tileset   – the compiled gfx.tiles.X object (SpriteRef variants keyed by adjacency)
      */
-    constructor(engine, blockSize = 1, solidTexturer = null, hazardTexturer = null) {
-        this.engine = engine;
-        this.blockSize = blockSize;
-        this.solidTexturer = solidTexturer ?? (() => {
-            throw new Error("WorldBuilder: no solidTexturer set");
-        });
-        this.hazardTexturer = hazardTexturer ?? (() => {
-            throw new Error("WorldBuilder: no hazardTexturer set");
-        });
+    constructor(tilemap) {
+        this.tilemap = tilemap;
     }
 
     /**
-     * Parses a bitmap room and loads it into engine.world.
-     * Wipes any existing world objects first (except the player).
+     * Returns a 4-char adjacency key for the tile at [row, col] in bitmap.
+     *   'y' = same-type tile present on that side
+     *   'n' = no same-type tile 
      *
-     * @param {string[]} bitmap - array of strings
+     * @param {string[]} bitmap
+     * @param {number}   row
+     * @param {number}   col
+     * @param {string}   ch - character whose adjacency to check
+     * @returns {string}  e.g. "yyyy" | "nnnn" | "nyny"
+     */
+    static adjacencyKey(bitmap, row, col, ch) {
+        const top    = bitmap[row - 1]?.[col] === ch ? 'y' : 'n';
+        const right  = bitmap[row]?.[col + 1] === ch ? 'y' : 'n';
+        const bottom = bitmap[row + 1]?.[col] === ch ? 'y' : 'n';
+        const left   = bitmap[row]?.[col - 1] === ch ? 'y' : 'n';
+        return `${top}${right}${bottom}${left}`;
+    }
+
+    /**
+     * Returns a texturer function for the given bitmap char.
+     * The texturer reads obj.tileKey (stamped during build()) to pick the variant.
+     *
+     * @param {string} ch
+     * @returns {(t: number, obj: MObject) => SpriteRef}
+     */
+    texturerFor(ch) {
+        const cfg = this.tilemap[ch];
+        if (!cfg) throw new Error(`AutoTiler: no tileset registered for "${ch}"`);
+        return (t, obj) => cfg.tileset[obj.tileKey] ?? cfg.tileset.yyyy;
+    }
+
+    /**
+     * Stamps the precomputed adjacency key onto a world object so its texturer
+     * can select the correct sprite variant each frame.
+     * Called internally by WorldBuilder.build().
+     */
+    stamp(bitmap, row, col, ch, obj) {
+        const matchCh = this.tilemap[ch]?.matchChar ?? ch;
+        obj.tileKey   = AutoTiler.adjacencyKey(bitmap, row, col, matchCh);
+    }
+
+    /**
+     * Builds a tile registry suitable for passing into WorldBuilder.
+     *
+     * @param {Object.<string, { type: Function, layer?: number, texturer?: Function }>} charConfig
+     *   For chars registered in this.tilemap:  only `type` (+ optional `layer`) needed.
+     * @returns {Object} registry
+     */
+    buildRegistry(charConfig) {
+        const registry = {};
+        for (const [ch, cfg] of Object.entries(charConfig)) {
+            const isAuto = !!this.tilemap[ch];
+            registry[ch] = {
+                type:     cfg.type,
+                autotile: isAuto,
+                texturer: isAuto ? this.texturerFor(ch) : cfg.texturer,
+                layer:    cfg.layer ?? 0,
+            };
+        }
+        return registry;
+    }
+}
+
+class WorldBuilder {
+    /**
+     * @param {MEngine}  engine
+     * @param {number}     [blockSize=1]
+     * @param {Object}     [tileRegistry={}]  - from AutoTiler.buildRegistry() or hand-built
+     * @param {AutoTiler}  [autoTiler=null]   - needed only when registry has autotile entries
+     */
+    constructor(engine, blockSize = 1, tileRegistry = {}, autoTiler = null) {
+        this.engine       = engine;
+        this.blockSize    = blockSize;
+        this.tileRegistry = tileRegistry;
+        this.autoTiler    = autoTiler;
+    }
+
+    /**
+     * Parses a bitmap, wipes the world (keeping the player), and populates
+     * engine.world with the appropriate typed objects.
+     *
+     * @param {string[]} bitmap
      * @returns {{ widthUnits: number, heightUnits: number }}
      */
     build(bitmap) {
-        const {
-            engine,
-            blockSize
-        } = this;
+        const { engine, blockSize, tileRegistry, autoTiler } = this;
 
-        //wipe world, keeping the player on layer 1
-        const player = engine.player;
-        engine.world.zia = {};
-        engine.world.indices = [];
+        //wipe world, preserving the player on layer 1
+        const player          = engine.player;
+        engine.world.zia      = {};
+        engine.world.indices  = [];
         if (player) engine.world.add(player, 1);
 
         let maxCols = 0;
@@ -134,42 +234,34 @@ class WorldBuilder {
         for (let row = 0; row < bitmap.length; row++) {
             const line = bitmap[row];
             for (let col = 0; col < line.length; col++) {
-                const ch = line[col];
-                const x = col * blockSize;
-                const y = row * blockSize;
+                const ch    = line[col];
+                const entry = tileRegistry[ch];
+                if (!entry) continue;
 
-                switch (ch) {
-                    case "#": {
-                        engine.world.add(
-                            new MSolid(x, y, blockSize, blockSize, this.solidTexturer),
-                            0
-                        );
-                        break;
-                    }
-                    case "-": {
-                        engine.world.add(
-                            new MHazard(x, y, blockSize, blockSize, this.hazardTexturer),
-                            0
-                        );
-                        break;
-                    }
+                const x   = col * blockSize;
+                const y   = row * blockSize;
+                const obj = new entry.type(x, y, blockSize, blockSize, entry.texturer);
+
+                if (entry.autotile && autoTiler) {
+                    autoTiler.stamp(bitmap, row, col, ch, obj);
                 }
+
+                engine.world.add(obj, entry.layer ?? 0);
             }
             if (line.length > maxCols) maxCols = line.length;
         }
 
         return {
-            widthUnits: maxCols * blockSize,
+            widthUnits:  maxCols       * blockSize,
             heightUnits: bitmap.length * blockSize,
         };
     }
 }
 
-
 class WorldManager {
     /**
-     * @param {MEngine}   engine
-     * @param {Object}    roomTemplates  - key → string[] bitmap map
+     * @param {MEngine} engine
+     * @param {Object} roomTemplates
      * @param {string[][]} worldAssembly - 2-D grid of room keys
      * @param {WorldBuilder} builder
      */
@@ -242,8 +334,8 @@ class WorldManager {
     /**
      * Sets the player's starting position after loading a room.
      * @param {MPlayer} player
-     * @param {number}  x  - world-unit x
-     * @param {number}  y  - world-unit y
+     * @param {number} x  - world-unit x
+     * @param {number} y  - world-unit y
      */
     placePlayer(player, x, y) {
         player.x = x;

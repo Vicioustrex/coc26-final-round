@@ -1445,7 +1445,83 @@ class Spritesheet {
     }
 }
 
-const spritesheet = new Spritesheet(300, 300);
+/**
+ * Generates all 16 autotile variants from a base interior pattern
+ *
+ * @param {string[]} interior - base 9×9 pixel pattern (no seams/borders)
+ * @param {string}   [seam='.']   - palette char used for seam/border pixels
+ * @param {string}   [corner='-'] - palette char used at seam intersections (transparent)
+ * @returns {Object} all 16 variants keyed by adjacency string e.g. "yyyy", "nnnn"
+ */
+function generateAutoTileset(interior, seam = '.', corner = '-') {
+    const variants = {};
+
+    for (const top of ['y', 'n'])
+    for (const right of ['y', 'n'])
+    for (const bottom of ['y', 'n'])
+    for (const left of ['y', 'n']) {
+        const key = top + right + bottom + left;
+        const rows = interior.map(r => r.split(''));
+        const W = rows[0].length;
+        const H = rows.length;
+
+        //draw grout seam on each connected side
+        if (top    === 'y') for (let c = 0; c < W; c++) rows[0][c]= seam;
+        if (bottom === 'y') for (let c = 0; c < W; c++) rows[H-1][c] = seam;
+        if (right  === 'y') for (let r = 0; r < H; r++) rows[r][W-1] = seam;
+        if (left   === 'y') for (let r = 0; r < H; r++) rows[r][0] = seam;
+
+        //transparent corner where two seam lines intersect
+        if (top    === 'y' && left  === 'y') rows[0][0] = corner;
+        if (top    === 'y' && right === 'y') rows[0][W-1] = corner;
+        if (bottom === 'y' && left  === 'y') rows[H-1][0] = corner;
+        if (bottom === 'y' && right === 'y') rows[H-1][W-1] = corner;
+
+        
+        if (key === 'nnnn') {
+            for (let c = 0; c < W; c++) { rows[0][c] = seam;  rows[H-1][c] = seam; }
+            for (let r = 0; r < H; r++) { rows[r][0] = seam;  rows[r][W-1] = seam; }
+            rows[0][0] = corner;  rows[0][W-1] = corner;
+            rows[H-1][0] = corner;  rows[H-1][W-1]= corner;
+        }
+
+        variants[key] = rows.map(r => r.join(''));
+    }
+
+    return variants;
+}
+
+const tileInteriors = {
+    C: [
+        "ddddddddd",
+        "deeeeeeed",
+        "deeeeeeed",
+        "ddddddddd",
+        "deeeeeeed",
+        "deeeeeeed",
+        "ddddddddd",
+        "deeeeeeed",
+        "deeeeeeed",
+    ],
+    D: [
+        "ccccccccc",
+        "cbbbbbbbc",
+        "cbbbbbbbc",
+        "ccccccccc",
+        "cbbbbbbbc",
+        "cbbbbbbbc",
+        "ccccccccc",
+        "cbbbbbbbc",
+        "cbbbbbbbc",
+    ],
+};
+
+//inject generated variants into gfxData befiore the spritesheet is built
+for (const [key, interior] of Object.entries(tileInteriors)) {
+    gfxData.tiles[key] = generateAutoTileset(interior);
+}
+
+const spritesheet = new Spritesheet(512, 512);
 const gfx = spritesheet.store(palette, gfxData);
 
 gfx.player.groundpoundimpact = {

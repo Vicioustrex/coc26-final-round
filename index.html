@@ -131,15 +131,25 @@
         // const world = new WorldManager(engine, roomTemplates, worldAssembly);
         // world.loadRoom(0, 0);
         // world.placePlayer(engine.player, 0, 0); 
+        
+        //register which bitmap chars map to which compiled tilesets
+        const autoTiler = new AutoTiler({
+            '#': { tileset: gfx.tiles.C },
+            '@': { tileset: gfx.tiles.D },
+        });
 
-        const solidTexturer  = (t, obj) => gfx.tiles.A.yyyy;
-        const hazardTexturer = (t, obj) => gfx.tiles.A.nnnn;
+        //build the registry
+        const registry = autoTiler.buildRegistry({
+            '#': { type: MSolid  },
+            '@': { type: MSolid  },
+            '-': { type: MHazard, texturer: (t, obj) => gfx.tiles.C.nnnn },
+        });
 
-        const builder = new WorldBuilder(engine, 1, solidTexturer, hazardTexturer);
+        const builder = new WorldBuilder(engine, 1, registry, autoTiler);
         const world = new WorldManager(engine, roomTemplates, worldAssembly, builder);
 
         world.loadRoom(0, 0);
-        world.placePlayer(engine.player, 10, 12); 
+        world.placePlayer(engine.player, 10, 12);
 
         let lastTime = performance.now();
         let firstTime = performance.now();
