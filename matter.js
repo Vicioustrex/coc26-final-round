@@ -141,6 +141,8 @@
                 this.hbox = this.dbox;
                 this.x = x;
                 this.y = y;
+                this.w = w;
+                this.h = h;
             }
 
             /** Renders the thing
