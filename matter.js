@@ -377,6 +377,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
             super.tick(dt, physEvents);
 
             if (events.Mouse && !eventsPrev.Mouse && !this.ball) {
+                window.console.log("CAMMAN18HI")
                 this.dragging = true;
                 this.dragInitX = events.MouseX;
                 this.dragInitY = events.MouseY;
@@ -427,10 +428,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
             const { x, y } = camera.worldToScreen(
                 this.x + this.w / 2,
                 this.y + this.h / 2
-            )
-            window.console.log(x + this.dragX - this.dragInitX);
+            );
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = 4;
+            ctx.beginPath();
             ctx.moveTo(x, y);
             ctx.lineTo(
                 x + this.dragX - this.dragInitX,
