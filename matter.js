@@ -429,6 +429,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
                 this.x + this.w / 2,
                 this.y + this.h / 2
             );
+            ctx.save();
             ctx.strokeStyle = "#ffffff";
             ctx.lineWidth = 4;
             ctx.beginPath();
@@ -438,6 +439,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
                 y + this.dragY - this.dragInitY
             );
             ctx.stroke();
+            ctx.restore();
         }
     }
 

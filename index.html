@@ -270,6 +270,7 @@
 
                 ctx.restore();
                 frameCount++;
+                Object.assign(eventsPrev, events);
             } catch (e) {
                 console.error("Main loop error\n" + e.stack);
             }
