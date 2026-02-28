@@ -1,4 +1,4 @@
-const events = { mouseX: 0, mouseY: 0, mouse: false };
+const events = { mouseX: 0, mouseY: 0, Mouse: false };
 const eventsPrev = Object.assign({}, events);
 
 // When key down, mark it as true
