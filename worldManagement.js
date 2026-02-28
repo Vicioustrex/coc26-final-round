@@ -14,10 +14,10 @@ const roomTemplates = {
         "#                  #",
         "#       @      ##  #",
         "#       @@@@       #",
-        "#  ###             #",
-        "#             @    #",
-        "#   BBBB      @@@  #",
-        "#     BB           #",
+        "#  ###              ",
+        "#             @     ",
+        "#   BBBB      @@@   ",
+        "#     BB            ",
         "####################",
     ],
 
@@ -34,10 +34,10 @@ const roomTemplates = {
         "#   ####           #",
         "#                  #",
         "#                  #",
-        "#        ##        #",
-        "#                  #",
-        "#                  #",
-        "#                  #",
+        "         ##        #",
+        "                   #",
+        "                   #",
+        "                   #",
         "####################",
     ],
 
@@ -84,8 +84,8 @@ const roomTemplates = {
 };
 
 const worldAssembly = [
-    ["A", "B"],
-    ["C", "D"],
+    "AB",
+    "CD",
 ];
 
 
@@ -221,8 +221,10 @@ class WorldManager {
 
     _roomKey(row, col) {
         if (row < 0 || row >= this.assembly.length) return null;
-        if (col < 0 || col >= this.assembly[row].length) return null;
-        return this.assembly[row][col] || null;
+        const rowStr = this.assembly[row];
+        if (col < 0 || col >= rowStr.length) return null;
+        const key = rowStr[col];
+        return key === ' ' ? null : key;
     }
 
     get _leftKey() {
