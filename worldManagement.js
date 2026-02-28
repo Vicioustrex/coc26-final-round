@@ -193,12 +193,14 @@ class WorldManager {
         this.curRow = row;
         this.curCol = col;
 
-        const {
-            widthUnits,
-            heightUnits
-        } = this.builder.build(bitmap);
+        const { widthUnits, heightUnits } = this.builder.build(bitmap);
         this.roomW = widthUnits;
         this.roomH = heightUnits;
+
+        this.engine.roomBounds = { 
+            w: this.roomW, 
+            h: this.roomH 
+        };
     }
 
     placePlayer(player, x, y) {

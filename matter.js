@@ -437,6 +437,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
             const { canvas, tileSize } = config;
             this.canvas = canvas;
             this.tsz = tileSize ?? 20;
+            this.baseTsz = this.tsz;
             this.viewBox = new MBox(0, 0, 0, 0);
             this.focus(0, 0);
         }
@@ -468,6 +469,32 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          */
         focusPlayer(player) {
             this.focus(player.x + player.w / 2, player.y + player.h / 2);
+        }
+        
+        /** Focusconstrain to room bounds, zoom in if room is smaller than viewport.
+         *
+         * @param {MPlayer} player
+         * @param {number} roomW  room width  in world units
+         * @param {number} roomH  room height in world units
+         */
+        focusPlayerConstrained(player, roomW, roomH) {
+            const cx = player.x + player.w / 2;
+            const cy = player.y + player.h / 2;
+
+            //zoom in if the room is too small to fill the canvas at baseTsz
+            const tszX = this.w / roomW;
+            const tszY = this.h / roomH;
+            this.tsz = Math.max(this.baseTsz, tszX, tszY);
+
+            //visible world area at the (possibly zoomed) tsz
+            const vw = this.w / this.tsz;
+            const vh = this.h / this.tsz;
+
+            //clamp so the view never shows outside [0, roomW] x [0, roomH]
+            const fx = Math.max(vw / 2, Math.min(roomW - vw / 2, cx));
+            const fy = Math.max(vh / 2, Math.min(roomH - vh / 2, cy));
+
+            this.focus(fx, fy);
         }
 
         /** Returns true if the object is currently in view.
@@ -533,7 +560,16 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
          * @returns {void}
          */
         render(t) {
-            this.camera.focusPlayer(this.engine.player);
+            const rb = this.engine.roomBounds;
+            if (rb) {
+                this.camera.focusPlayerConstrained(this.engine.player, rb.w, rb.h);
+            } else {
+                this.camera.focusPlayer(this.engine.player);
+            }
+
+            // Keep pixel size in sync with whatever tsz the camera settled on
+            this.pixel = this.camera.tsz / this.res;
+
             this.engine.world.iterate(obj => {
                 if (this.camera.inView(obj)) obj.render(this.ctx, this.camera, t, this.pixel);
             });
