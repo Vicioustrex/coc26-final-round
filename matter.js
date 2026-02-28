@@ -257,7 +257,9 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
         tick(dt, events, attributes={}) {
             const hvel = attributes.hvel ?? this.engine.hvel;
             const jump = attributes.jump ?? this.engine.jump;
-            const { world, gravity, friction } = this.engine;
+            const friction = attributes.friction ?? this.engine.friction;
+            const gravity = attributes.gravity ?? this.engine.gravity;
+            const world = this.engine.world;
             const xAccel = -hvel * Math.log(friction);
             if (events.KeyA) {
                 this.xv -= xAccel * dt;
@@ -297,7 +299,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
     }
 
     class MBall extends MEntity {
-        constructor(player) {
+        constructor(player, xv, yv) {
             super(
                 player.x + player.w / 2,
                 player.y + player.h / 2,
@@ -305,8 +307,9 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
             );
             this.x = player.x + player.w / 2;
             this.y = player.y + player.h / 2;
-            this.xv = 0;
-            this.yv = 0;
+            this.xv = xv;
+            this.yv = yv;
+            this.engine = player.engine;
         }
         render(ctx, camera, t, pixel) {
             const { x, y } = camera.worldToScreen(this.x, this.y);
@@ -324,6 +327,8 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
      * 
      */
     class MPlayer extends MEntity {
+        static throwFactor = 10;
+
         /** Constructs an instance of MPlayer.
          * 
          * @constructor
@@ -341,6 +346,12 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
             this.groundPoundTime = 0;
             this.impactTime = null;
             this.prevKeyS = false;
+            this.dragging = false;
+            this.dragInitX = 0;
+            this.dragInitY = 0;
+            this.dragX = 0;
+            this.dragY = 0;
+            this.ball = null;
         }
 
         /** Tick the game forward
@@ -370,9 +381,29 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
                 : events;
 
             super.tick(dt, physEvents);
+            this.ball?.tick?.(dt, {}, { friction: 1 });
 
-            if (events.Mouse) {
-                this.engine.world.add(new MBall(this), 100);
+            if (events.Mouse && !eventsPrev.Mouse && !this.ball) {
+                this.dragging = true;
+                this.dragInitX = events.MouseX;
+                this.dragInitY = events.MouseY;
+                this.dragX = events.MouseX;
+                this.dragY = events.MouseY;
+            } else if (events.Mouse && this.dragging) {
+                this.dragX = events.MouseX;
+                this.dragY = events.MouseY;
+            } else if (!events.Mouse && this.dragging) {
+                this.dragging = false;
+                const tsz = this.engine.renderer.camera.tsz;
+                this.ball = new MBall(this,
+                    (this.dragX - this.dragInitX) / tsz * this.constructor.throwFactor,
+                    (this.dragY - this.dragInitY) / tsz * this.constructor.throwFactor,
+                );
+            } else if (events.Mouse && this.ball) {
+                this.x = this.ball.x - this.w / 2;
+                this.y = this.ball.y - this.h / 2;
+                this.updateHitbox();
+                this.ball = null;
             }
 
             if (events.KeyA) this.facing = -1;
