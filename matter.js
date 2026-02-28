@@ -340,6 +340,12 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
             this.groundPoundTime = 0;
             this.impactTime = null;
             this.prevKeyS = false;
+            this.dragging = true;
+            this.dragInitX = 0;
+            this.dragInitY = 0;
+            this.dragX = 0;
+            this.dragY = 0;
+            this.ball = null;
         }
 
         /** Tick the game forward
@@ -370,8 +376,15 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
 
             super.tick(dt, physEvents);
 
-            if (events.Mouse) {
-                this.engine.world.add(new MBall(this), 100);
+            if (events.Mouse && !eventsPrev.Mouse && !this.ball) {
+                this.dragging = true;
+                this.dragInitX = events.MouseX;
+                this.dragInitY = events.MouseY;
+                this.dragX = events.MouseX;
+                this.dragY = events.MouseY;
+            } else if (events.Mouse && this.dragging) {
+                this.dragX = events.MouseX;
+                this.dragY = events.MouseY;
             }
 
             if (events.KeyA) this.facing = -1;
@@ -401,6 +414,30 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEngine } = (() => {
             }
         }
         
+        /** Renders the thing
+         * 
+         * @param {CanvasRenderingContext2D} ctx 
+         * @param {MCamera} camera 
+         * @param {number} t
+         * @param {number} pixel
+         * @returns {void}
+         */
+        render(ctx, camera, t, pixel) {
+            super.render(ctx, camera, t, pixel);
+            const { x, y } = camera.worldToScreen(
+                this.x + this.w / 2,
+                this.y + this.h / 2
+            )
+            window.console.log(x + this.dragX - this.dragInitX);
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 4;
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x + this.dragX - this.dragInitX,
+                y + this.dragY - this.dragInitY
+            );
+            ctx.stroke();
+        }
     }
 
     /** MWorld class.
