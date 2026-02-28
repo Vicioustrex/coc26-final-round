@@ -45,7 +45,7 @@
         
 
         //for testing
-        engine.renderer.debug = true;
+        //engine.renderer.debug = true;
 
         const shakes = [];
         const shake = { x: 0, y: 0 };
@@ -132,21 +132,13 @@
         // world.loadRoom(0, 0);
         // world.placePlayer(engine.player, 0, 0); 
         
-        //register which bitmap chars map to which compiled tilesets
-        const autoTiler = new AutoTiler({
-            '#': { tileset: gfx.tiles.C },
-            '@': { tileset: gfx.tiles.D },
-        });
+        const tileMap = {
+            '#': { type: MSolid, tileset: gfx.tiles.A },
+            '@': { type: MSolid, tileset: gfx.tiles.a },
+        };
 
-        //build the registry
-        const registry = autoTiler.buildRegistry({
-            '#': { type: MSolid  },
-            '@': { type: MSolid  },
-            '-': { type: MHazard, texturer: (t, obj) => gfx.tiles.C.nnnn },
-        });
-
-        const builder = new WorldBuilder(engine, 1, registry, autoTiler);
-        const world = new WorldManager(engine, roomTemplates, worldAssembly, builder);
+        const builder = new WorldBuilder(engine, 1, tileMap);
+        const world   = new WorldManager(engine, roomTemplates, worldAssembly, builder);
 
         world.loadRoom(0, 0);
         world.placePlayer(engine.player, 10, 12);
@@ -171,7 +163,8 @@
                 dt = Math.min(dtMs / 1000, 0.1);
                 t = tMs / 1000;
                 fps = dtMs > 0 ? Math.round(1000 / dtMs) : fps;
-
+                
+                ctx.fillStyle = "rgb(100, 100, 100)";
                 ctx.fillRect(0, 0, width, height);
 
                 shakes.forEach((s, i) => s.active(i));
