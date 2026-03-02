@@ -19,7 +19,7 @@ const roomTemplates = {
         "#  ###              ",
         "#        e          ",
         "#   BBBB            ",
-        "#     BB      K     ",
+        "#     BB  K         ",
         "####################",
     ],
 
@@ -345,26 +345,27 @@ class WorldManager {
     _doTransition(player) {
         const savedX = player.x;
         const savedY = player.y;
+        const e = this.engine.epsilon;
 
         switch (this._pending.dir) {
             case 'left': {
                 this.loadRoom(this.curRow, this.curCol - 1);
-                this.placePlayer(player, this.roomW - player.w, savedY);
+                this.placePlayer(player, this.roomW - player.w - e, savedY);
                 break;
             }
             case 'right': {
                 this.loadRoom(this.curRow, this.curCol + 1);
-                this.placePlayer(player, 0, savedY);
+                this.placePlayer(player, e, savedY);
                 break;
             }
             case 'top': {
                 this.loadRoom(this.curRow - 1, this.curCol);
-                this.placePlayer(player, savedX, this.roomH - player.h);
+                this.placePlayer(player, savedX, this.roomH - player.h - e);
                 break;
             }
             case 'bottom': {
                 this.loadRoom(this.curRow + 1, this.curCol);
-                this.placePlayer(player, savedX, 0);
+                this.placePlayer(player, savedX, e);
                 break;
             }
         }
