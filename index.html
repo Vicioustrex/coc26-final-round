@@ -287,6 +287,11 @@
                 //clear for real this frame
                 ctx.fillStyle = "rgb(100, 100, 100)";
                 ctx.fillRect(0, 0, width, height);
+                
+                //transistion delay for room swap
+                world._transitionCooldown = Math.max(0, world._transitionCooldown - dt);
+                world.execute(engine.player);
+
 
                 //execute room load (uses _pending already set above)
                 world.execute(engine.player);
@@ -302,24 +307,17 @@
                 if (roomTransition.active) {
                     const { x: nx, y: ny } = roomTransition.getNewOffset(width, height);
 
-                    //new room slides in from off-screen
                     ctx.save();
                     ctx.translate(nx, ny);
                     engine.renderer.renderScene(t);
-                    ctx.restore(); 
+                    ctx.restore();
 
-                    //old room slides out drawn on top so seam is hidden
-                    roomTransition.drawOldRoom(ctx); 
-
-                    //player always on top, stationary (rooms slide around them)
+                    roomTransition.drawOldRoom(ctx);
                     engine.renderer.renderPlayer(t);
-
-                    //physics keeps running during slide
-                    engine.player.tick(dt, events);
-                } else {
+                }
+                else {
                     engine.tick(t, dt, events);
                     renderHUD(ctx, engine.player, engine.renderer.pixel);
-                    
                 }
 
                 ctx.restore();

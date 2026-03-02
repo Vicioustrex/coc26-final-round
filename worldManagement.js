@@ -230,6 +230,9 @@ class WorldManager {
         this.roomH = 0;
 
         this._pending = null;
+
+        //for transistions
+        this._transitionCooldown = 0;
     }
 
     loadRoom(row, col) {
@@ -289,6 +292,7 @@ class WorldManager {
             this._doTransition(player);
             this.transition?.start(dir);
             this._pending = null;
+            this._transitionCooldown = 0.4;
         }
     }
 
@@ -314,6 +318,7 @@ class WorldManager {
     }
 
     _detectEdge(player) {
+        if (this._transitionCooldown > 0) return;
         if (player.x + player.w < 0 && this._leftKey) {
             this._pending = {
                 dir: 'left'
@@ -340,6 +345,20 @@ class WorldManager {
         }
     }
 
+    _findClearPosition(player, startX, startY, stepX, stepY) {
+        const maxSteps = 20;
+        player.x = startX;
+        player.y = startY;
+        player.updateHitbox();
+
+        for (let i = 0; i < maxSteps; i++) {
+            if (!player.touching(MSolid, this.engine.world)) return;
+            player.x += stepX;
+            player.y += stepY;
+            player.updateHitbox();
+        }
+    }
+
     _doTransition(player) {
         const savedX = player.x;
         const savedY = player.y;
@@ -348,22 +367,26 @@ class WorldManager {
         switch (this._pending.dir) {
             case 'left': {
                 this.loadRoom(this.curRow, this.curCol - 1);
-                this.placePlayer(player, this.roomW - player.w - e, savedY);
+                this.placePlayer(player, this.roomW - player.w, savedY);
+                this._findClearPosition(player, player.x, player.y, -this.builder.blockSize, 0);
                 break;
             }
             case 'right': {
                 this.loadRoom(this.curRow, this.curCol + 1);
-                this.placePlayer(player, e, savedY);
+                this.placePlayer(player, 0, savedY);
+                this._findClearPosition(player, player.x, player.y, this.builder.blockSize, 0);
                 break;
             }
             case 'top': {
                 this.loadRoom(this.curRow - 1, this.curCol);
-                this.placePlayer(player, savedX, this.roomH - player.h - e);
+                this.placePlayer(player, savedX, this.roomH - player.h);
+                this._findClearPosition(player, player.x, player.y, 0, -this.builder.blockSize);
                 break;
             }
             case 'bottom': {
                 this.loadRoom(this.curRow + 1, this.curCol);
-                this.placePlayer(player, savedX, e);
+                this.placePlayer(player, savedX, 0);
+                this._findClearPosition(player, player.x, player.y, 0, this.builder.blockSize);
                 break;
             }
         }
