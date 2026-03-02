@@ -3135,7 +3135,7 @@ const gfxData = {
 };
 
 /** Sprite reference, from spritesheet.
- * 
+ * 	
  */
 class SpriteRef {
     /** Constructs an instance of SpriteRef.

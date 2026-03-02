@@ -196,16 +196,12 @@
         const builder = new WorldBuilder(engine, 1, tileMap);
         const world   = new WorldManager(engine, roomTemplates, worldAssembly, builder);
 
-        world.loadRoom(0, 0); 
+        world.onEnemySpawn = (type, x, y) => {
+            const variant = type === 'E' ? 'g2' : 'g1';
+            engine.world.add(new MBlob(x, y, variant), 1);
+        };
 
-
-        const blobPositions = [
-            { x: 2, y: 14, v: 'g1' }, 
-            { x: 11, y: 6,  v: 'r1' },
-        ];
-        for (const { x, y, v } of blobPositions) {
-            engine.world.add(new MBlob(x, y, v), 1);
-        }
+        world.loadRoom(0, 0);
 
         world.placePlayer(engine.player, 10, 12);
 

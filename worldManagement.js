@@ -12,12 +12,12 @@ const roomTemplates = {
         "#   ###            #",
         "#   #              #",
         "#             ##   #",
-        "#                  #",
+        "#     E            #",
         "#                  #",
         "#       @      ##  #",
         "#       @@@@       #",
         "#  ###              ",
-        "#             @     ",
+        "#        e    @     ",
         "#   BBBB      @@@   ",
         "#     BB            ",
         "####################",
@@ -251,6 +251,17 @@ class WorldManager {
 
         //build or even rebuild nav graph for the new room
         this.engine.graph = new PlatformGraph(bitmap, this.builder.tileMap);
+
+        if (this.onEnemySpawn) {
+            for (let row = 0; row < bitmap.length; row++) {
+                for (let col = 0; col < bitmap[row].length; col++) {
+                    const ch = bitmap[row][col];
+                    if (ch === 'E' || ch === 'e') {
+                        this.onEnemySpawn(ch, col * this.builder.blockSize, row * this.builder.blockSize);
+                    }
+                }
+            }
+        }
     }
 
     placePlayer(player, x, y) {
