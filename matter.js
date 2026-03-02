@@ -1106,7 +1106,14 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
         tick(t, dt, events) {
             this.renderer.render(t);
             this.player.tick(dt, events);
-            
+            if (this.player.health <= 0) {
+                this.player.x = this.player.sx;
+                this.player.y = this.player.sy;
+                this.player.xv = 0;
+                this.player.yv = 0;
+                this.player.health = this.player.maxHealth;
+                this.player.updateHitbox();
+            }
             //tick every enemy each frame
             this.world.iterate(obj => {
                 if (obj !== this.player && typeof obj.tick === 'function') obj.tick(dt);
