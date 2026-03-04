@@ -237,6 +237,7 @@
         
         const roomTransition = new RoomTransition();
         engine.onRoomChange = (dir) => {
+            if (roomTransition.active) return;
             roomTransition.capture(canvas);
             roomTransition.start(dir);
         };
@@ -323,17 +324,24 @@
                 shakes.forEach((s, i) => s.active(i));
 
                 if (roomTransition.active) {
-                    // first transition frame: do a visual-only render of the new
-                    // room to capture it as a static snapshot, then freeze physics
                     if (!roomTransition.newCaptured) {
+                        const cam = engine.renderer.camera;
+                        cam.lockZoom = true;
+                        if (roomTransition.dir === 'left' || roomTransition.dir === 'right') {
+                            cam.lockFocusY = true;
+                        } else {
+                            cam.lockFocusX = true;
+                        }
                         engine.renderer.render(t);
+                        cam.lockZoom   = false;
+                        cam.lockFocusX = false;
+                        cam.lockFocusY = false;
                         roomTransition.captureNew(canvas);
-                        // re-clear so the snapshots draw onto a clean background
                         ctx.fillStyle = "rgb(100, 100, 100)";
                         ctx.fillRect(0, 0, width, height);
                     }
 
-                    // slide both static snapshots — no physics, no live render
+                    //I'm getting lazy with the comments
                     ctx.save();
                     ctx.translate(shake.x, shake.y);
                     roomTransition.drawNewRoom(ctx);
@@ -350,7 +358,7 @@
 
                 renderHUD(ctx, engine.player, engine.renderer.pixel);
 
-                ctx.restore();
+                //ctx.restore();
                 frameCount++;
                 Object.assign(eventsPrev, events);
             //} catch (e) {

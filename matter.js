@@ -1020,6 +1020,12 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
         }
 
         transportEntity(entity) {
+
+            // if (entity._transportLock) {
+            //     entity.updateHitbox();
+            //     return;
+            // }
+
             //storing this for later
             const oldRoom = entity.room;
 
@@ -1044,11 +1050,11 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             }
             entity.updateHitbox();
 
-            //notify engine if the player just crossed a room boundary
-            if (entity === this.engine?.player && entity.room !== oldRoom) {
+            if (entity === this.engine?.player && entity.room !== oldRoom && !entity._roomChangedThisFrame) {
                 const dr = entity.room.row - oldRoom.row;
                 const dc = entity.room.col - oldRoom.col;
                 const dir = dc > 0 ? 'right' : dc < 0 ? 'left' : dr > 0 ? 'bottom' : 'top';
+                entity._roomChangedThisFrame = true;
                 this.engine.onRoomChange?.(dir);
             }
         }
@@ -1143,9 +1149,11 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             const cy = player.y + player.h / 2;
 
             //zoom in if the room is too small to fill the canvas at baseTsz
-            const tszX = this.w / room.width;
-            const tszY = this.h / room.height;
-            this.tsz = Math.max(this.baseTsz, tszX, tszY);
+            if (!this.lockZoom) {
+                const tszX = this.w / room.width;
+                const tszY = this.h / room.height;
+                this.tsz = Math.max(this.baseTsz, tszX, tszY);
+            }
 
             //visible world area at the (possibly zoomed) tsz
             const vw = this.w / this.tsz;
@@ -1154,8 +1162,11 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             //clamp so the view never shows outside [0, room.width] x [0, room.height]
             const fx = Math.max(vw / 2, Math.min(room.width - vw / 2, cx));
             const fy = Math.max(vh / 2, Math.min(room.height - vh / 2, cy));
-
-            this.focus(fx, fy);
+            
+            this.focus(
+                this.lockFocusX ? this.focusX : fx,
+                this.lockFocusY ? this.focusY : fy
+            );
         }
 
         /** Returns true if the object is currently in view.
@@ -1340,6 +1351,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
                 this.player.health = this.player.maxHealth;
                 this.player.transport();
             }
+
+            //this.player._transportLock = false;
+            this.player._roomChangedThisFrame = false;
+
             //tick every enemy each frame (hey xyz I changed this to make it only run per room jsyk)
             this.world.iterateRoom(this.player.room, obj => {
                 if (obj !== this.player && typeof obj.tick === 'function') obj.tick(dt);
