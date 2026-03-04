@@ -1,4 +1,4 @@
-const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() => {
+const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckpoint, MNPC, MBlob } = (() => {
     /** MBox: an AABB hitbox implementation.
      * 
      */
@@ -638,6 +638,18 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
             this._path = null;
             this._pathTimer = 0;
             this._pathStuck = 0;
+
+            /* how close before chasing, how far before giving up.
+            Subclasses can override these. Without defaults here enemies
+            never aggro because dist <= undefined is always false */
+            this.aggroRange = this.aggroRange ?? 12;
+            this.deAggroRange = this.deAggroRange ?? 18;
+
+            //patrol state
+            this.patrolDir  = 1;
+            this.stallTimer = 0;
+            this.jumpCooldown = 0;
+            this.chaseMode  = false;
         }
 
         /** Override in subclasses to implement AI behaviour.
@@ -724,7 +736,8 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
             this._pathTimer = interval;
 
             const p = this.engine?.player;
-            const g = this.engine?.graph;
+            //prefer this enemy's room graph so multi-room pathfinding stays local
+            const g = this.room?.graph ?? this.engine?.graph;
             if (!p || !g) return;
 
             this._path = g.findPath(this.x, this.y, p.x, p.y);
@@ -810,14 +823,14 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
         die() {
             if (this.dead) return;
             this.dead = true;
-            const world = this.engine?.world;
-            if (!world) return;
-            for (const z of world.indices) {
-                const arr = world.zia[z];
+            const room = this.room;
+            if (!room) return;
+            for (const z of room.indices) {
+                const arr = room.zia[z];
                 const idx = arr.indexOf(this);
-                if (idx !== -1) { 
-                    arr.splice(idx, 1); 
-                    break; 
+                if (idx !== -1) {
+                    arr.splice(idx, 1);
+                    break;
                 }
             }
         }
@@ -842,40 +855,58 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
             this.engine = engine;
         }
 
-        /** Initiates an MWorld.
-         * 
-         * @typedef {{ type: typeof MObject, tileset: {[key: string]: SpriteRef} }} TileData
-         * 
-         * @param {{ [key: string]: string }} roomData
+        /**
+         * @param {{ [key: string]: string[]|{ bitmap: string[], entities: Object } }} roomData
          * @param {string[]} worldAssembly
          * @param {{ [key: string]: TileData }} tileMap
+         * @param {{ [key: string]: (x: number, y: number) => MObject }} [globalEntityMap={}]
+         *   Fallback entity factories used for any room that doesn't define its own.
          */
-        init(roomData, worldAssembly, tileMap) {
+        init(roomData, worldAssembly, tileMap, globalEntityMap = {}) {
             this.roomData = roomData;
             this.assembly = worldAssembly;
-            this.tileMap = tileMap;
+            this.tileMap= tileMap;
+
             for (const row in worldAssembly) {
                 this.rooms.push([]);
                 for (const col in worldAssembly[row]) {
                     this.rooms[row].push({
-                        zia: {}, // z-indexed array
-                        indices: [], // important: must ALWAYS be in ascending order
+                        zia: {},
+                        indices: [],
                         entities: [],
                         loaded: false,
                         width: 0,
-                        height: 0,
-                        row: parseFloat(row),
-                        col: parseFloat(col),
+                        height:0,
+                        row:parseFloat(row),
+                        col:parseFloat(col),
                     });
+
                     const room = this.rooms[row][col];
-                    const { width, height } = this.build(room, this.roomData[this.assembly[row][col]], tileMap);
+                    const key = this.assembly[row][col];
+
+                    //support both plain array rooms {} roomies yk
+                    const roomDef = this.roomData[key];
+                    const bitmap = Array.isArray(roomDef) ? roomDef : roomDef.bitmap;
+                    
+                    //per-room entities take priority; fall back to globalEntityMap
+                    const entityMap = (!Array.isArray(roomDef) && roomDef.entities)
+                        ? roomDef.entities
+                        : globalEntityMap;
+
+                    const { width, height } = this.build(room, bitmap, tileMap);
                     room.width = width;
                     room.height = height;
+                    
+                    if (typeof PlatformGraph !== 'undefined') {
+                        room.graph = new PlatformGraph(bitmap, tileMap);
+                    }
+
+                    this._spawnEntities(room, bitmap, entityMap);
+
                     room.loaded = true;
                 }
             }
         }
-
         /** Adds an object to a room of the MWorld.
          * 
          * @param {MObject} room
@@ -959,6 +990,27 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
                 width: maxCols,
                 height: bitmap.length,
             };
+        }
+
+        /**
+         * Scans a bitmap for characters in entityMap and spawns the returned objects into room.
+         *
+         * @param {Object}   room
+         * @param {string[]} bitmap
+         * @param {{ [key: string]: (x: number, y: number, ch: string) => MObject|null }} entityMap
+         */
+        _spawnEntities(room, bitmap, entityMap) {
+            if (!bitmap || !entityMap) return;
+            for (let r = 0; r < bitmap.length; r++) {
+                const line = bitmap[r];
+                for (let c = 0; c < line.length; c++) {
+                    const ch = line[c];
+                    const factory = entityMap[ch];
+                    if (!factory) continue;
+                    const entity = factory(c, r, ch);
+                    if (entity) this.add(room, entity, 0);
+                }
+            }
         }
 
         addEntity(room, entity) {
@@ -1276,11 +1328,437 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine } = (() 
                 this.player.health = this.player.maxHealth;
                 this.player.transport();
             }
-            //tick every enemy each frame
-            this.world.iterate(obj => {
+            //tick every enemy each frame (hey xyz I changed this to make it only run per room jsyk)
+            this.world.iterateRoom(this.player.room, obj => {
                 if (obj !== this.player && typeof obj.tick === 'function') obj.tick(dt);
             });
         }
     }
-    return { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine };
+
+    class MCheckpoint extends MDecorative {
+        static ACTIVATE_RADIUS = 3;
+        static LIGHT_UP_DURATION = 0.7;
+        static ANIM_FPS = 6;
+
+        constructor(x, y) {
+            super(x, y, 2, 4, (t, self) => {
+                if (self.state === 'lighting') {
+                    const frames = gfx.props.misc.totemLightUp;
+                    const frame = Math.min(
+                        frames.length - 1,
+                        Math.floor(self.stateTime / MCheckpoint.LIGHT_UP_DURATION * frames.length)
+                    );
+                    return frames[frame];
+                }
+                if (self.state === 'on') {
+                    const frames = gfx.props.misc.totemOn;
+                    return frames[Math.floor(t * MCheckpoint.ANIM_FPS) % frames.length];
+                }
+                return gfx.props.misc.totemOff[0];
+            });
+            this.state = 'off';
+            this.stateTime = 0;
+        }
+
+        tick(dt) {
+            this.stateTime += dt;
+            const player = this.engine?.player;
+            if (!player) return;
+
+            if (this.state === 'off') {
+                const dx = (player.x + player.w / 2) - this.x;
+                const dy = (player.y + player.h / 2) - this.y;
+                if (Math.sqrt(dx * dx + dy * dy) <= MCheckpoint.ACTIVATE_RADIUS) {
+                    this._activate(player);
+                }
+            } else if (this.state === 'lighting' && this.stateTime >= MCheckpoint.LIGHT_UP_DURATION) {
+                this.state = 'on';
+                this.stateTime = 0;
+            }
+        }
+
+        _activate(player) {
+            //turn off every other checkpoint in the world
+            this.engine.world.iterate(obj => {
+                if (obj instanceof MCheckpoint && obj !== this) {
+                    obj.state = 'off';
+                    obj.stateTime = 0;
+                }
+            });
+
+            this.state = 'lighting';
+            this.stateTime = 0;
+
+            //reposition the player's respawn point to the base of this totem
+            player.sx = this.x + 1 - player.w / 2;
+            player.sy = this.y + 4  - player.h;
+        }
+    }
+
+    class MNPC extends MDecorative {
+        static TALK_RADIUS = 4;
+        static ANIM_FPS = 3;
+        static DEBUG_RADIUS = false;
+
+        constructor(x, y, dialogue = [], spriteKey = 'pakala') {
+            super(x, y, 2, 3, (t, self) => {
+                const frames = gfx.props.npcs[self.spriteKey];
+                if (!frames) return gfx.props.npcs.pakala[0];
+                
+                //handle both animated arr and static 
+                if (Array.isArray(frames)) {
+                    return frames[Math.floor(t * MNPC.ANIM_FPS) % frames.length];
+                }
+                return frames;
+            });
+
+            this.spriteKey = spriteKey;
+            this.dialogue = dialogue;
+            this.dialogueIndex = -1;
+            this.inRange = false;
+            this._prevSpace = false;
+
+            //html junk ask arrow
+            const overlay = document.getElementById('overlay');
+
+            this._bubble = document.createElement('div');
+            this._bubble.className = 'npc-bubble';
+            this._bubble.style.display = 'none';
+            overlay.appendChild(this._bubble);
+
+            this._prompt = document.createElement('div');
+            this._prompt.className = 'npc-prompt';
+            this._prompt.textContent = 'SPACE to talk';
+            this._prompt.style.display = 'none';
+            overlay.appendChild(this._prompt);
+        }
+
+        tick(dt) {
+            const player = this.engine?.player;
+            if (!player) return;
+
+            const events = this.engine.events ?? {};
+            const spaceNow = !!events.Space;
+            const spaceJust = spaceNow && !this._prevSpace;
+            this._prevSpace = spaceNow;
+
+            //proximity check
+            const cx = this.x + 1, cy = this.y + 1.5;
+            const px = player.x + player.w / 2, py = player.y + player.h / 2;
+            const dist = Math.hypot(px - cx, py - cy);
+            this.inRange = dist <= MNPC.TALK_RADIUS;
+
+            //lose dialogue if player walks away
+            if (!this.inRange) {
+                this.dialogueIndex = -1;
+            }
+
+            //advance n' open n' close on space
+            if (this.inRange && spaceJust) {
+                if (this.dialogueIndex === -1) {
+                    this.dialogueIndex = 0;
+                }
+                else {
+                    this.dialogueIndex++;
+                    if (this.dialogueIndex >= this.dialogue.length) {
+                        this.dialogueIndex = -1;
+                    }
+                }
+            }
+
+            this._syncHTML();
+        }
+
+        _syncHTML() {
+            if (!this.engine?.renderer) return;
+            const camera = this.engine.renderer.camera;
+
+            //pos both elements above the NPC's head
+            const { x: sx, y: sy } = camera.worldToScreen(this.x + 1, this.y - 0.3);
+
+            const talking = this.dialogueIndex >= 0 &&this.dialogueIndex < this.dialogue.length;
+
+            //yap bubble, I HATE modifying CSS with JS
+            if (talking) {
+                const line = this.dialogue[this.dialogueIndex];
+                const progress = `${this.dialogueIndex + 1} / ${this.dialogue.length}`;
+                this._bubble.innerHTML =
+                    `${line.replace(/\n/g, '<br>')}`+
+                    `<span class="npc-progress">${progress} &nbsp;[SPACE]</span>`;
+                this._bubble.style.left = `${sx}px`;
+                this._bubble.style.top = `${sy}px`;
+                this._bubble.style.display = 'block';
+            } else {
+                this._bubble.style.display = 'none';
+            }
+
+            //proximity prompt stuffs
+            if (this.inRange && !talking && this.dialogue.length > 0) {
+                this._prompt.style.left = `${sx}px`;
+                this._prompt.style.top = `${sy - 4}px`;
+                this._prompt.style.display = 'block';
+            } 
+            else {
+                this._prompt.style.display = 'none';
+            }
+        }
+
+        render(ctx, camera, t, pixel) {
+            super.render(ctx, camera, t, pixel);
+
+            //for debug stuffs
+            if (MNPC.DEBUG_RADIUS) {
+                const { x, y } = camera.worldToScreen(this.x + 1, this.y + 1.5);
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 0,0,0.7)';
+                ctx.lineWidth = 2;
+                //I will forever use this (found out about it last month)
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.arc(x, y, MNPC.TALK_RADIUS * camera.tsz, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        //call this when room is bye bye so we don't get 10 missed calls from the DOM
+        destroy() {
+            this._bubble?.remove();
+            this._prompt?.remove();
+        }
+    }
+
+
+    /**
+     * builds a walkability graph from a room bitmap and runs BFS pathfinding
+     * Nodes = tile positions where an entity can stand.
+     * Edges = walk, fall off ledge, or jump to a reachable node.
+     */
+    class PlatformGraph {
+        /**
+         * @param {string[]} bitmap
+         * @param {Object} tileMap
+         */
+        constructor(bitmap, tileMap) {
+            this.bitmap = bitmap;
+            this.tileMap = tileMap;
+            this.nodes = this._build();
+        }
+
+        //help me
+        _solid(r, c) { 
+            return (this.bitmap[r]?.[c] ?? ' ') in this.tileMap; 
+        }
+        _open(r, c)  { 
+            return !this._solid(r, c); 
+        }
+
+        /** Standable = open tile with a solid tile directly below */
+        _standable(r, c) { 
+            return this._open(r, c) && this._solid(r + 1, c); 
+        }
+
+        _build() {
+            const rows = this.bitmap.length;
+            const cols = Math.max(...this.bitmap.map(l => l.length));
+            const nodes = new Map();
+
+            //create a node for every tile an entity can stand on
+            for (let r = 0; r < rows; r++)
+                for (let c = 0; c < cols; c++)
+                    if (this._standable(r, c))
+                        nodes.set(`${c},${r}`, { c, r, edges: [] });
+            
+            //jump stuff
+            const JUMP_H = 5;
+            const JUMP_W = 5;
+
+            //connect nodes with edges
+            for (const [, node] of nodes) {
+                const { c, r } = node;
+
+                //walk left / right (same height, head clearance checked)
+                for (const dir of [-1, 1]) {
+                    const nc = c + dir;
+                    const nb = nodes.get(`${nc},${r}`);
+                    if (nb && this._open(r, nc) && this._open(r - 1, nc))
+                        node.edges.push({ to: nb, move: dir > 0 ? 'right' : 'left', jump: false });
+                }
+
+                //fall off edges into air column, land on lower node
+                for (const dir of [-1, 1]) {
+                    const nc = c + dir;
+                    if (this._open(r, nc)) {
+                        for (let dr = 1; dr <= 12; dr++) {
+                            const nr = r + dr;
+                            const nb = nodes.get(`${nc},${nr}`);
+                            if (nb) { node.edges.push({ to: nb, move: dir > 0 ? 'right' : 'left', jump: false }); break; }
+                            if (this._solid(nr, nc)) break;
+                        }
+                    }
+                }
+
+                //any standable tile within the parabolic jump envelope
+                for (let dc = -JUMP_W; dc <= JUMP_W; dc++) {
+                    for (let dr = 1; dr <= JUMP_H; dr++) {
+                        const nb = nodes.get(`${c + dc},${r - dr}`);
+                        if (nb) node.edges.push({ to: nb, move: dc >= 0 ? 'right' : 'left', jump: true });
+                    }
+                }
+            }
+
+            return nodes;
+        }
+
+        /** Snaps (c, r) to the nearest standable node, searching downward up to 3 tiles. */
+        _nearestKey(c, r) {
+            for (let dr = 0; dr <= 3; dr++) {
+                const k = `${c},${r + dr}`;
+                if (this.nodes.has(k)) return k;
+            }
+            return null;
+        }
+
+        _reconstruct(visited, goalKey) {
+            const path = [];
+            let key = goalKey;
+            while (visited.get(key) !== null) {
+                const { from, edge } = visited.get(key);
+                path.unshift({ c: edge.to.c, r: edge.to.r, move: edge.move, jump: edge.jump });
+                key = from;
+            }
+            return path;
+        }
+
+        /**
+         * BFS from world position (fx,fy) → (tx,ty).
+         * Returns array of step objects: { c, r, move:'left'|'right', jump:bool }
+         * Returns null if no path exists, [] if already at goal.
+         */
+        findPath(fx, fy, tx, ty) {
+            const startKey = this._nearestKey(Math.round(fx), Math.round(fy));
+            const goalKey = this._nearestKey(Math.round(tx), Math.round(ty));
+
+            if (!startKey || !goalKey)  return null;
+            if (startKey === goalKey)   return [];
+
+            const start = this.nodes.get(startKey);
+            const goal = this.nodes.get(goalKey);
+            if (!start || !goal) return null;
+
+            const visited = new Map([[startKey, null]]);
+            const queue = [start];
+
+            while (queue.length) {
+                const node = queue.shift();
+                const nk = `${node.c},${node.r}`;
+                if (nk === goalKey) return this._reconstruct(visited, goalKey);
+
+                for (const edge of node.edges) {
+                    const ek = `${edge.to.c},${edge.to.r}`;
+                    if (!visited.has(ek)) {
+                        visited.set(ek, { from: nk, edge });
+                        queue.push(edge.to);
+                    }
+                }
+            }
+            return null;
+        }
+    }
+
+    class MBlob extends MEnemy {
+        constructor(x, y, variant = 'g1') {
+            const sprites = gfx.enemies.slimes[variant];
+            const big = variant.endsWith('2');
+            const w = big ? 0.88 : 0.60;
+            const h = big ? 0.77 : 0.55;
+            const hp = big ? 60   : 30;
+
+            super(x, y, w, h, hp, (t, self) => {
+                const fps= self.state === 'jump' ? 10 : 4;
+                const frames = sprites[self.state] ?? sprites.idle;
+                const frame  = Math.floor(t * fps) % frames.length;
+                return frames[frame];
+            });
+
+            this.sprites = sprites;
+            this.patrolDir = 1;
+            this.jumpCooldown = 1 + Math.random() * 1.5;
+            this.stallTimer = 0;
+
+            //AI crap
+            this.aggroRange= big ? 8 : 6;
+            this.deAggroRange = big ? 12 : 9;
+            this.chaseMode = false;  
+            this.aggroLatch = 0;
+        } 
+
+        ai(dt) {
+            const dist = this._playerDist();
+
+            //aggro range junk
+            if (!this.chaseMode && dist <= this.aggroRange) {
+                this.chaseMode  = true;
+                this.aggroLatch = 1.0;
+            }
+            if (this.chaseMode) {
+                this.aggroLatch -= dt;
+                if (this.aggroLatch <= 0 && dist > this.deAggroRange) {
+                    this.chaseMode = false;
+                }
+            }
+
+            //movement decision
+            if (this.chaseMode) {
+                this._runChase(dt);
+            } else {
+                this._runPatrol(dt);
+            }
+
+            //animation state
+            this.state = this.grounded ? 'idle' : 'jump';
+        }
+
+        _runChase(dt) {
+            //use the graph to navigate
+            this._updatePath(dt, 0.5);
+
+            if (this._path?.length) {
+                this._followPath(dt);
+            } else {
+                //graph went bleh
+                const hDir = this._playerHDir();
+                if (hDir ===  1) this._moveRight = true;
+                if (hDir === -1) this._moveLeft  = true;
+                this.facing = hDir || this.facing;
+            }
+        }
+
+        /** Patrol: walk back and forth, jump periodically. */
+        _runPatrol(dt) {
+            if (this.patrolDir === 1) this._moveRight = true;
+            else this._moveLeft  = true;
+            this.facing = this.patrolDir;
+
+            if (this.grounded && Math.abs(this.xv) < 0.15) {
+                this.stallTimer += dt;
+                if (this.stallTimer > 0.25) {
+                    this.patrolDir  *= -1;
+                    this.stallTimer  = 0;
+                    this.stateTime   = 0;
+                }
+            }
+            else {
+                this.stallTimer = 0;
+            }
+
+            this.jumpCooldown -= dt;
+            if (this.grounded && this.jumpCooldown <= 0) {
+                this._jumpQueued = true;
+                this.jumpCooldown = 1.5 + Math.random() * 2;
+            }
+        }
+    }
+
+    return { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckpoint, MNPC, MBlob };
 })();
