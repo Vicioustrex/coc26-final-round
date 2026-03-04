@@ -1020,6 +1020,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
         }
 
         transportEntity(entity) {
+            //storing this for later
+            const oldRoom = entity.room;
+
+            //new room
             let { row, col, width } = entity.room;
             if (entity.x < 0 && this.rooms[row]?.[col - 1]) {
                 entity.room = this.rooms[row][col - 1];
@@ -1039,6 +1043,14 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
                 entity.y -= height;
             }
             entity.updateHitbox();
+
+            //notify engine if the player just crossed a room boundary
+            if (entity === this.engine?.player && entity.room !== oldRoom) {
+                const dr = entity.room.row - oldRoom.row;
+                const dc = entity.room.col - oldRoom.col;
+                const dir = dc > 0 ? 'right' : dc < 0 ? 'left' : dr > 0 ? 'bottom' : 'top';
+                this.engine.onRoomChange?.(dir);
+            }
         }
 
         /** Iterates through the rooms with a callback. If the callback

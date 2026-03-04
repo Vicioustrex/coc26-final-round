@@ -69,8 +69,10 @@
         }
 
         class RoomTransition {
-            constructor() {
+             constructor() {
                 this.snap = document.createElement('canvas');
+                this.snapNew = document.createElement('canvas');
+                this.newCaptured = false;
                 this.active = false;
                 this.dir= null;
                 this.progress = 0;
@@ -79,9 +81,16 @@
             }
 
             capture(sourceCanvas) {
-                this.snap.width= sourceCanvas.width;
+                this.snap.width = sourceCanvas.width;
                 this.snap.height = sourceCanvas.height;
                 this.snap.getContext('2d').drawImage(sourceCanvas, 0, 0);
+            }
+
+            captureNew(sourceCanvas) {
+                this.snapNew.width = sourceCanvas.width;
+                this.snapNew.height = sourceCanvas.height;
+                this.snapNew.getContext('2d').drawImage(sourceCanvas, 0, 0);
+                this.newCaptured = true;
             }
 
             start(dir) {
@@ -89,6 +98,7 @@
                 this.dir = dir;
                 this.elapsed = 0;
                 this.progress = 0;
+                this.newCaptured = false;
             }
 
             tick(dt) {
@@ -138,6 +148,11 @@
             drawOldRoom(ctx) {
                 const { x, y } = this.getOldOffset(this.snap.width, this.snap.height);
                 ctx.drawImage(this.snap, x, y);
+            }
+
+            drawNewRoom(ctx) {
+                const { x, y } = this.getNewOffset(this.snapNew.width, this.snapNew.height);
+                ctx.drawImage(this.snapNew, x, y);
             }
         }
 
@@ -219,9 +234,12 @@
 
         
         MNPC.DEBUG_RADIUS = true;
-        /*
+        
         const roomTransition = new RoomTransition();
-        world.transition = roomTransition;*/
+        engine.onRoomChange = (dir) => {
+            roomTransition.capture(canvas);
+            roomTransition.start(dir);
+        };
 
         /** HUD
          *
@@ -234,7 +252,7 @@
 
             const filledHearts = Math.ceil((player.health / player.maxHealth) * MAX_HEARTS);
 
-            const heartSprite  = gfx.player.heartFull;
+            const heartSprite = gfx.player.heartFull;
             const heartW = heartSprite.w * pixel;
             const heartH = heartSprite.h * pixel;
             const gap = Math.round(pixel * 1.5);
@@ -303,24 +321,34 @@
                 //tick transition an' shake
                 //roomTransition.tick(dt);
                 shakes.forEach((s, i) => s.active(i));
-                ctx.save();
-                ctx.translate(shake.x, shake.y);
 
-                /*if (roomTransition.active) {
-                    const { x: nx, y: ny } = roomTransition.getNewOffset(width, height);
+                if (roomTransition.active) {
+                    // first transition frame: do a visual-only render of the new
+                    // room to capture it as a static snapshot, then freeze physics
+                    if (!roomTransition.newCaptured) {
+                        engine.renderer.render(t);
+                        roomTransition.captureNew(canvas);
+                        // re-clear so the snapshots draw onto a clean background
+                        ctx.fillStyle = "rgb(100, 100, 100)";
+                        ctx.fillRect(0, 0, width, height);
+                    }
 
+                    // slide both static snapshots — no physics, no live render
                     ctx.save();
-                    ctx.translate(nx, ny);
-                    engine.renderer.renderScene(t);
-                    ctx.restore();
-
+                    ctx.translate(shake.x, shake.y);
+                    roomTransition.drawNewRoom(ctx);
                     roomTransition.drawOldRoom(ctx);
-                    engine.renderer.renderPlayer(t);
-                }
-                else {*/
+                    ctx.restore();
+                    roomTransition.tick(dt);
+                } else {
+                    ctx.save();
+                    ctx.translate(shake.x, shake.y);
                     engine.tick(t, dt, events);
-                    renderHUD(ctx, engine.player, engine.renderer.pixel);
-                //}
+                    ctx.restore();
+                    roomTransition.tick(dt);
+                }
+
+                renderHUD(ctx, engine.player, engine.renderer.pixel);
 
                 ctx.restore();
                 frameCount++;
