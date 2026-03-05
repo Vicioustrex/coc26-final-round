@@ -583,6 +583,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
                 this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
                 this.xv = this.ball.xv;
                 this.yv = this.ball.yv;
+                this.room = this.ball.room;
                 this.transport();
                 this.ball = null;/*
                 const touched = this.touchingAll(MSolid, this.engine.world);
@@ -643,7 +644,8 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
          */
         render(ctx, camera, t, pixel) {
             super.render(ctx, camera, t, pixel);
-            this.ball?.render?.(ctx, camera, t, pixel);
+            if (this.ball?.room == this.room)
+                this.ball?.render?.(ctx, camera, t, pixel);
             if (this.dragging) {
                 const { x, y } = camera.worldToScreen(
                     this.x + this.w / 2,
@@ -1148,6 +1150,10 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
                     const retval = callback(obj);
                     if (typeof retval !== "undefined") return retval;
                 }
+            }
+            for (const entity of room.entities) {
+                const retval = callback(obj);
+                if (typeof retval !== "undefined") return retval;
             }
         }
     }

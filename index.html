@@ -322,7 +322,7 @@
                 //tick transition an' shake
                 //roomTransition.tick(dt);
                 shakes.forEach((s, i) => s.active(i));
-
+                
                 if (roomTransition.active) {
                     if (!roomTransition.newCaptured) {
                         const cam = engine.renderer.camera;
