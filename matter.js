@@ -336,6 +336,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             this.engine = player.engine;
             this.room = player.room;
             this.angle = 0;
+            this._hitCooldowns = new Map();
         }
 
         render(ctx, camera, t, pixel) {
@@ -371,6 +372,32 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             if (yt) {
                 this.y = this.yv > 0 ? yt.hbox.y1 - this.h - epsilon : yt.hbox.y2 + epsilon;
                 this.yv *= -MBall.bounce;
+            }
+
+            //tick down per-enemy hit cooldowns
+            for (const [enemy, cd] of this._hitCooldowns) {
+                const remaining = cd - dt;
+                if (remaining <= 0) this._hitCooldowns.delete(enemy);
+                else this._hitCooldowns.set(enemy, remaining);
+            }
+
+            //enemy collision bounce and deal damage
+            const hitEnemies = this.touchingAll(MEnemy, world);
+            for (const enemy of hitEnemies) {
+                if (enemy.dead || this._hitCooldowns.has(enemy)) continue;
+
+                //reflect whichever axis has less overlap (same logic as solid)
+                const dx = (this.x + this.w / 2) - (enemy.x + enemy.w / 2);
+                const dy = (this.y + this.h / 2) - (enemy.y + enemy.h / 2);
+                if (Math.abs(dx) >= Math.abs(dy)) {
+                    this.xv *= -MBall.bounce;
+                } else {
+                    this.yv *= -MBall.bounce;
+                }
+
+                enemy.takeDamage(30);
+                //grace peroid is 300ms
+                this._hitCooldowns.set(enemy, 0.3);
             }
 
             //spin proportional to horizontal speed
@@ -1952,7 +1979,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             const big = variant.endsWith('2');
             const w = big ? 0.88 : 0.60;
             const h = big ? 0.77 : 0.55;
-            const hp = big ? 60   : 30;
+             const hp = big ? 90: 30;
 
             super(x, y, w, h, hp, (t, self) => {
                 const fps= self.state === 'jump' ? 10 : 4;
