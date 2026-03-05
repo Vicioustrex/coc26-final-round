@@ -354,13 +354,13 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
         }
 
         tick(dt) {
-            const { world, gravity } = this.engine;
+            const { world, gravity, epsilon } = this.engine;
 
             this.x += this.xv * dt;
             this.transport();
             const xt = this.touching(MSolid, world);
             if (xt) {
-                this.x = this.xv > 0 ? xt.hbox.x1 - this.w : xt.hbox.x2;
+                this.x = this.xv > 0 ? xt.hbox.x1 - this.w - epsilon : xt.hbox.x2 + epsilon;
                 this.xv *= -MBall.bounce;
             }
 
@@ -369,7 +369,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             this.transport();
             const yt = this.touching(MSolid, world);
             if (yt) {
-                this.y = this.yv > 0 ? yt.hbox.y1 - this.h : yt.hbox.y2;
+                this.y = this.yv > 0 ? yt.hbox.y1 - this.h - epsilon : yt.hbox.y2 + epsilon;
                 this.yv *= -MBall.bounce;
             }
 
@@ -584,7 +584,26 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
                 this.xv = this.ball.xv;
                 this.yv = this.ball.yv;
                 this.transport();
-                this.ball = null;
+                this.ball = null;/*
+                const touched = this.touchingAll(MSolid, this.engine.world);
+                let xFloor = -Infinity, xCeil = Infinity,
+                    yFloor = -Infinity, yCeil = Infinity;
+                for (const solid in touched) {
+                    // 67
+                    if (solid.hbox.x2 < this.hbox.x2 && solid.hbox.x2 > xFloor) {
+                        xFloor = solid.hbox.x2;
+                    }
+                    if (this.hbox.x1 < solid.hbox.x1 && solid.hbox.x1 < xCeil) {
+                        xCeil = solid.hbox.x1;
+                    }
+                    if (solid.hbox.y2 < this.hbox.y2 && solid.hbox.y2 > yFloor) {
+                        yFloor = solid.hbox.y2;
+                    }
+                    if (this.hbox.y1 < solid.hbox.y1 && solid.hbox.y1 < yCeil) {
+                        yCeil = solid.hbox.y1;
+                    }
+                }
+                */
             }
 
             if (events.KeyA) this.facing = -1;
