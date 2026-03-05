@@ -1732,18 +1732,18 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             super.render(ctx, camera, t, pixel);
 
             //for debug stuffs
-            if (MNPC.DEBUG_RADIUS) {
-                const { x, y } = camera.worldToScreen(this.x + 1, this.y + 1.5);
-                ctx.save();
-                ctx.strokeStyle = 'rgba(255, 0,0,0.7)';
-                ctx.lineWidth = 2;
-                //I will forever use this (found out about it last month)
-                ctx.setLineDash([4, 4]);
-                ctx.beginPath();
-                ctx.arc(x, y, MNPC.TALK_RADIUS * camera.tsz, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.restore();
-            }
+            // if (MNPC.DEBUG_RADIUS) {
+            //     const { x, y } = camera.worldToScreen(this.x + 1, this.y + 1.5);
+            //     ctx.save();
+            //     ctx.strokeStyle = 'rgba(255, 0,0,0.7)';
+            //     ctx.lineWidth = 2;
+            //     //I will forever use this (found out about it last month)
+            //     ctx.setLineDash([4, 4]);
+            //     ctx.beginPath();
+            //     ctx.arc(x, y, MNPC.TALK_RADIUS * camera.tsz, 0, Math.PI * 2);
+            //     ctx.stroke();
+            //     ctx.restore();
+            // }
         }
 
         //call this when room is bye bye so we don't get 10 missed calls from the DOM
