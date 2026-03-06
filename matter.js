@@ -699,6 +699,8 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
                 this.state = 'groundpound';
             } else if (this.impactTime !== null) {
                 this.state = 'groundpoundimpact';
+            } else if (this.dragging && !this.carrying && !this.ball) {
+                this.state = 'throw';
             } else if (!this.grounded) {
                 this.airTime = (this.airTime ?? 0) + dt;
                 this.state = this.yv < 0 ? 'jump' : 'fall';
