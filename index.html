@@ -1,49 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
-<head>
+  <head>
     <!--Encoding and viewport-->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--Import google font: Exo -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Exo">
-    <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Lato&family=Material+Icons&display=swap'>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Exo" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Lato&family=Material+Icons&display=swap"
+    />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <!--The page title-->
     <title>New webpage</title>
     <!--CSS Styling-->
     <link rel="stylesheet" href="style.css" />
-</head>
+  </head>
 
-<body>
+  <body>
     <!--The container for the entire thing-->
     <div id="container">
-        <div id="game-wrapper">
-            <canvas id="game"></canvas>
+      <div id="game-wrapper">
+        <canvas id="game"></canvas>
+      </div>
+      <div id="overlay">
+        <div id="fullscreen-container">
+          <span class="material-icons" id="fullscreen">fullscreen</span>
         </div>
-        <div id="overlay">
-            <div id="fullscreen-container">
-                <span class='material-icons' id='fullscreen'>fullscreen</span>
-            </div>
-            <p id="console"></p>
-        </div>
+      </div>
     </div>
-</body>
-<script type></script>
-<script type src="canvas.js"></script>
-<script type src="console.js"></script>
-<script type src="pixart.js"></script>
-<script type src="matter.js"></script>
-<script type src="userinput.js"></script>
-<script type src="worldManagement.js"></script>
-<script type src="pathfinding.js"></script>
-<script type src="enemies.js"></script>
-<!-- screw all the code i couldnt understand, i will completely redo it -->
-<script type>
+  </body>
+  <script type src="engine-scripts/spritesheet.js"></script>
+  <script type src="engine-scripts/userinput.js"></script>
+  <script type src="engine-scripts/canvas.js"></script>
+  <script type src="engine-scripts/console.js"></script>
+
+  <script type src="engine-scripts/gameObject.js"></script>
+
+  <script type src="game-scripts/pixelArtData.js"></script>
+  <script type src="game-scripts/worldData.js"></script>
+
+  <script type src="matter.js"></script>
+
+  <script type src="main.js"></script>
+
+  <!-- screw all the code i couldnt understand, i will completely redo it
+  <script type>
     const engine = MEngine.create({});
     engine.setRenderConfig(canvas, 36, 9);
-
-
 
     //for testing
     //engine.renderer.debug = true;
@@ -52,164 +56,169 @@
     const shake = { x: 0, y: 0 };
 
     class Shake {
-        constructor(n) {
-            this.n = n;
+      constructor(n) {
+        this.n = n;
+      }
+      active(increment) {
+        shake.x = (Math.random() * 2 - 1) * this.n;
+        shake.y = (Math.random() * 2 - 1) * this.n;
+        this.n -= 0.5;
+        if (this.n < 0) {
+          shake.x = 0;
+          shake.y = 0;
+          shakes.splice(increment, 1);
         }
-        active(increment) {
-            shake.x = (Math.random() * 2 - 1) * this.n;
-            shake.y = (Math.random() * 2 - 1) * this.n;
-            this.n -= 0.5;
-            if (this.n < 0) {
-                shake.x = 0;
-                shake.y = 0;
-                shakes.splice(increment, 1);
-            }
-        }
+      }
     }
 
     class RoomTransition {
-        constructor() {
-            this.snap = document.createElement('canvas');
-            this.snapNew = document.createElement('canvas');
-            this.newCaptured = false;
-            this.active = false;
-            this.dir = null;
-            this.progress = 0;
-            this.elapsed = 0;
-            this.duration = 0.3;
-        }
+      constructor() {
+        this.snap = document.createElement("canvas");
+        this.snapNew = document.createElement("canvas");
+        this.newCaptured = false;
+        this.active = false;
+        this.dir = null;
+        this.progress = 0;
+        this.elapsed = 0;
+        this.duration = 0.3;
+      }
 
-        capture(sourceCanvas) {
-            this.snap.width = sourceCanvas.width;
-            this.snap.height = sourceCanvas.height;
-            this.snap.getContext('2d').drawImage(sourceCanvas, 0, 0);
-        }
+      capture(sourceCanvas) {
+        this.snap.width = sourceCanvas.width;
+        this.snap.height = sourceCanvas.height;
+        this.snap.getContext("2d").drawImage(sourceCanvas, 0, 0);
+      }
 
-        captureNew(sourceCanvas) {
-            this.snapNew.width = sourceCanvas.width;
-            this.snapNew.height = sourceCanvas.height;
-            this.snapNew.getContext('2d').drawImage(sourceCanvas, 0, 0);
-            this.newCaptured = true;
-        }
+      captureNew(sourceCanvas) {
+        this.snapNew.width = sourceCanvas.width;
+        this.snapNew.height = sourceCanvas.height;
+        this.snapNew.getContext("2d").drawImage(sourceCanvas, 0, 0);
+        this.newCaptured = true;
+      }
 
-        start(dir) {
-            this.active = true;
-            this.dir = dir;
-            this.elapsed = 0;
-            this.progress = 0;
-            this.newCaptured = false;
-        }
+      start(dir) {
+        this.active = true;
+        this.dir = dir;
+        this.elapsed = 0;
+        this.progress = 0;
+        this.newCaptured = false;
+      }
 
-        tick(dt) {
-            if (!this.active) return;
-            this.elapsed += dt;
-            this.progress = Math.min(this.elapsed / this.duration, 1);
-            if (this.progress >= 1) this.active = false;
-        }
+      tick(dt) {
+        if (!this.active) return;
+        this.elapsed += dt;
+        this.progress = Math.min(this.elapsed / this.duration, 1);
+        if (this.progress >= 1) this.active = false;
+      }
 
-        //cubic ease-out instead of lerp because I can and it flows nicer
-        get eased() {
-            return 1 - Math.pow(1 - this.progress, 3);
-        }
+      //cubic ease-out instead of lerp because I can and it flows nicer
+      get eased() {
+        return 1 - Math.pow(1 - this.progress, 3);
+      }
 
-        //where the new room starts (off-screen) and slides to (0,0)
-        getNewOffset(w, h) {
-            const p = this.eased;
-            switch (this.dir) {
-                case 'right':
-                    return { x: w * (1 - p), y: 0 };
-                case 'left':
-                    return { x: -w * (1 - p), y: 0 };
-                case 'bottom':
-                    return { x: 0, y: h * (1 - p) };
-                case 'top':
-                    return { x: 0, y: -h * (1 - p) };
-            }
-            return { x: 0, y: 0 };
+      //where the new room starts (off-screen) and slides to (0,0)
+      getNewOffset(w, h) {
+        const p = this.eased;
+        switch (this.dir) {
+          case "right":
+            return { x: w * (1 - p), y: 0 };
+          case "left":
+            return { x: -w * (1 - p), y: 0 };
+          case "bottom":
+            return { x: 0, y: h * (1 - p) };
+          case "top":
+            return { x: 0, y: -h * (1 - p) };
         }
+        return { x: 0, y: 0 };
+      }
 
-        //where the old room slides to (away from 0,0)
-        getOldOffset(w, h) {
-            const p = this.eased;
-            switch (this.dir) {
-                case 'right':
-                    return { x: -w * p, y: 0 };
-                case 'left':
-                    return { x: w * p, y: 0 };
-                case 'bottom':
-                    return { x: 0, y: -h * p };
-                case 'top':
-                    return { x: 0, y: h * p };
-            }
-            return { x: 0, y: 0 };
+      //where the old room slides to (away from 0,0)
+      getOldOffset(w, h) {
+        const p = this.eased;
+        switch (this.dir) {
+          case "right":
+            return { x: -w * p, y: 0 };
+          case "left":
+            return { x: w * p, y: 0 };
+          case "bottom":
+            return { x: 0, y: -h * p };
+          case "top":
+            return { x: 0, y: h * p };
         }
+        return { x: 0, y: 0 };
+      }
 
-        drawOldRoom(ctx) {
-            const { x, y } = this.getOldOffset(this.snap.width, this.snap.height);
-            ctx.drawImage(this.snap, x, y);
-        }
+      drawOldRoom(ctx) {
+        const { x, y } = this.getOldOffset(this.snap.width, this.snap.height);
+        ctx.drawImage(this.snap, x, y);
+      }
 
-        drawNewRoom(ctx) {
-            const { x, y } = this.getNewOffset(this.snapNew.width, this.snapNew.height);
-            ctx.drawImage(this.snapNew, x, y);
-        }
+      drawNewRoom(ctx) {
+        const { x, y } = this.getNewOffset(
+          this.snapNew.width,
+          this.snapNew.height,
+        );
+        ctx.drawImage(this.snapNew, x, y);
+      }
     }
 
     //make my life less stressful than it already is
     const addShake = (power) => shakes.push(new Shake(power));
     engine.onGroundPound = () => addShake(10);
     engine.groundPoundMult = 2;
+
     const ANIM_FPS = {
-        idle: 4,
-        run: 8,
-        jump: 12,
-        fall: 8,
-        groundpound: 10,
-        groundpoundimpact: 10,
+      idle: 4,
+      run: 8,
+      jump: 12,
+      fall: 8,
+      groundpound: 10,
+      groundpoundimpact: 10,
     };
 
     const tileMap = {
-        '#': { type: MSolid, tileset: gfx.tiles.A },
-        '@': { type: MDecorative, tileset: gfx.tiles.a },
-        'B': { type: MSolid, tileset: gfx.tiles.B },
+      "#": { type: MSolid, tileset: gfx.tiles.A },
+      "@": { type: MDecorative, tileset: gfx.tiles.a },
+      B: { type: MSolid, tileset: gfx.tiles.B },
     };
 
     engine.world.init(roomTemplates, worldAssembly, tileMap);
 
     engine.createPlayer(5, 5, 0.97, 1.4, (t, player) => {
-        const state = player.state ?? 'idle';
-        const frames = gfx.player[state] ?? gfx.player.idle;
-        const fps = ANIM_FPS[state] ?? 6;
-        const count = Object.keys(frames).length;
-        let frame;
+      const state = player.state ?? "idle";
+      const frames = gfx.player[state] ?? gfx.player.idle;
+      const fps = ANIM_FPS[state] ?? 6;
+      const count = Object.keys(frames).length;
+      let frame;
 
-        //if you prefer chaining if else statements you need help
-        switch (state) {
-            case 'jump':
-            case 'fall': {
-                frame = Math.min(count - 1, Math.floor((player.airTime ?? 0) * fps));
-                break;
-            }
-            case 'groundpound': {
-                frame = 0;
-                break;
-            }
-            case 'groundpoundimpact': {
-                //play impact frames forward once then hold last
-                frame = Math.min(count - 1, Math.floor((player.impactTime ?? 0) * fps));
-                break;
-            }
-            default: {
-                frame = Math.floor(t * fps) % count;
-            }
+      //if you prefer chaining if else statements you need help
+      switch (state) {
+        case "jump":
+        case "fall": {
+          frame = Math.min(count - 1, Math.floor((player.airTime ?? 0) * fps));
+          break;
         }
+        case "groundpound": {
+          frame = 0;
+          break;
+        }
+        case "groundpoundimpact": {
+          //play impact frames forward once then hold last
+          frame = Math.min(
+            count - 1,
+            Math.floor((player.impactTime ?? 0) * fps),
+          );
+          break;
+        }
+        default: {
+          frame = Math.floor(t * fps) % count;
+        }
+      }
 
-        //just in case yk?
-        frame = Math.max(0, Math.min(count - 1, frame));
-        return frames[frame];
+      //just in case yk?
+      frame = Math.max(0, Math.min(count - 1, frame));
+      return frames[frame];
     });
-
-
 
     //const builder = new WorldBuilder(engine, 1, tileMap);
     //const world = new WorldManager(engine, roomTemplates, worldAssembly, builder);
@@ -231,14 +240,13 @@
         }
     };*/
 
-
     MNPC.DEBUG_RADIUS = true;
 
     const roomTransition = new RoomTransition();
     engine.onRoomChange = (dir) => {
-        if (roomTransition.active) return;
-        roomTransition.capture(canvas);
-        roomTransition.start(dir);
+      if (roomTransition.active) return;
+      roomTransition.capture(canvas);
+      roomTransition.start(dir);
     };
 
     /** HUD
@@ -248,69 +256,70 @@
      * @param {number}   pixel - engine.renderer.pixel
      */
     function renderHUD(ctx, player, pixel) {
-        const MAX_HEARTS = 3;
+      const MAX_HEARTS = 3;
 
-        const filledHearts = Math.ceil((player.health / player.maxHealth) * MAX_HEARTS);
+      const filledHearts = Math.ceil(
+        (player.health / player.maxHealth) * MAX_HEARTS,
+      );
 
-        const heartSprite = gfx.player.heartFull;
-        const heartW = heartSprite.w * pixel;
-        const heartH = heartSprite.h * pixel;
-        const gap = Math.round(pixel * 1.5);
-        const marginX = Math.round(pixel * 2);
-        const marginY = Math.round(pixel * 2);
+      const heartSprite = gfx.player.heartFull;
+      const heartW = heartSprite.w * pixel;
+      const heartH = heartSprite.h * pixel;
+      const gap = Math.round(pixel * 1.5);
+      const marginX = Math.round(pixel * 2);
+      const marginY = Math.round(pixel * 2);
 
-        for (let i = 0; i < MAX_HEARTS; i++) {
-            const sprite = i < filledHearts
-                ? gfx.player.heartFull
-                : gfx.player.heartEmpty;
+      for (let i = 0; i < MAX_HEARTS; i++) {
+        const sprite =
+          i < filledHearts ? gfx.player.heartFull : gfx.player.heartEmpty;
 
-            sprite.draw(
-                ctx,
-                marginX + i * (heartW + gap),
-                marginY,
-                pixel
-            );
-        }
+        sprite.draw(ctx, marginX + i * (heartW + gap), marginY, pixel);
+      }
     }
 
     let lastTime = performance.now();
     let firstTime = performance.now();
-    let frameCount = 0, dtMs, dt, tMs, t, fps;
+    let frameCount = 0,
+      dtMs,
+      dt,
+      tMs,
+      t,
+      fps;
 
     //a render loop with a timestamp for dt updating @Judges
     const render = (timestamp) => {
-        //try {
-        //prefer the rAF timestamp when present
-        const now = typeof timestamp === "number" ? timestamp : performance.now();
+      //try {
+      //prefer the rAF timestamp when present
+      const now = typeof timestamp === "number" ? timestamp : performance.now();
 
-        //dt in milliseconds, never negative
-        dtMs = Math.max(0, now - lastTime);
-        tMs = Math.max(0, now - firstTime);
+      //dt in milliseconds, never negative
+      dtMs = Math.max(0, now - lastTime);
+      tMs = Math.max(0, now - firstTime);
 
-        lastTime = now;
+      lastTime = now;
 
-        //dt in seconds (clamped to avoid huge jumps after tab hidden)
-        dt = Math.min(dtMs / 1000, 0.1);
-        t = tMs / 1000;
-        fps = dtMs > 0 ? Math.round(1000 / dtMs) : fps;
+      //dt in seconds (clamped to avoid huge jumps after tab hidden)
+      dt = Math.min(dtMs / 1000, 0.1);
+      t = tMs / 1000;
+      fps = dtMs > 0 ? Math.round(1000 / dtMs) : fps;
 
-        //peek at whether a room change is about to happen
-        //const pendingDir = world.getPendingDir();
+      //peek at whether a room change is about to happen
+      //const pendingDir = world.getPendingDir();
 
-        //iif so: render the old room (no player!) into the snapshot
-        /*if (pendingDir) {
+      //iif so: render the old room (no player!) into the snapshot
+      /*if (pendingDir) {
             ctx.fillStyle = "rgb(100, 100, 100)";
             ctx.fillRect(0, 0, width, height);
             engine.renderer.renderScene(t);
             roomTransition.capture(canvas);
         }*/
 
-        //clear for real this frame
-        ctx.fillStyle = "rgb(100, 100, 100)";
-        ctx.fillRect(0, 0, width, height);
+      //clear for real this frame
+      ctx.fillStyle = "rgb(100, 100, 100)";
+      ctx.fillRect(0, 0, width, height);
 
-        //transistion delay for room swap
-        /*world._transitionCooldown = Math.max(0, world._transitionCooldown - dt);
+      //transistion delay for room swap
+      /*world._transitionCooldown = Math.max(0, world._transitionCooldown - dt);
         world.execute(engine.player);
 
 
@@ -318,51 +327,51 @@
         world.execute(engine.player);
         if (pendingDir) roomTransition.start(pendingDir);*/
 
-        //tick transition an' shake
-        //roomTransition.tick(dt);
-        shakes.forEach((s, i) => s.active(i));
+      //tick transition an' shake
+      //roomTransition.tick(dt);
+      shakes.forEach((s, i) => s.active(i));
 
-        if (roomTransition.active) {
-            if (!roomTransition.newCaptured) {
-                const cam = engine.renderer.camera;
-                cam.lockZoom = true;
-                if (roomTransition.dir === 'left' || roomTransition.dir === 'right') {
-                    cam.lockFocusY = true;
-                } else {
-                    cam.lockFocusX = true;
-                }
-                engine.renderer.render(t);
-                cam.lockZoom = false;
-                cam.lockFocusX = false;
-                cam.lockFocusY = false;
-                roomTransition.captureNew(canvas);
-                ctx.fillStyle = "rgb(100, 100, 100)";
-                ctx.fillRect(0, 0, width, height);
-            }
-
-            //I'm getting lazy with the comments
-            ctx.save();
-            ctx.translate(shake.x, shake.y);
-            roomTransition.drawNewRoom(ctx);
-            roomTransition.drawOldRoom(ctx);
-            ctx.restore();
-            roomTransition.tick(dt);
-        } else {
-            ctx.save();
-            ctx.translate(shake.x, shake.y);
-            engine.tick(t, dt, events);
-            ctx.restore();
-            roomTransition.tick(dt);
+      if (roomTransition.active) {
+        if (!roomTransition.newCaptured) {
+          const cam = engine.renderer.camera;
+          cam.lockZoom = true;
+          if (roomTransition.dir === "left" || roomTransition.dir === "right") {
+            cam.lockFocusY = true;
+          } else {
+            cam.lockFocusX = true;
+          }
+          engine.renderer.render(t);
+          cam.lockZoom = false;
+          cam.lockFocusX = false;
+          cam.lockFocusY = false;
+          roomTransition.captureNew(canvas);
+          ctx.fillStyle = "rgb(100, 100, 100)";
+          ctx.fillRect(0, 0, width, height);
         }
 
-        renderHUD(ctx, engine.player, engine.renderer.pixel);
+        //I'm getting lazy with the comments
+        ctx.save();
+        ctx.translate(shake.x, shake.y);
+        roomTransition.drawNewRoom(ctx);
+        roomTransition.drawOldRoom(ctx);
+        ctx.restore();
+        roomTransition.tick(dt);
+      } else {
+        ctx.save();
+        ctx.translate(shake.x, shake.y);
+        engine.tick(t, dt, events);
+        ctx.restore();
+        roomTransition.tick(dt);
+      }
 
-        //ctx.restore();
-        frameCount++;
-        Object.assign(eventsPrev, events);
-        //} catch (e) {
-        //    console.error("Main loop error\n" + e.stack);
-        //}
+      renderHUD(ctx, engine.player, engine.renderer.pixel);
+
+      //ctx.restore();
+      frameCount++;
+      Object.assign(eventsPrev, events);
+      //} catch (e) {
+      //    console.error("Main loop error\n" + e.stack);
+      //}
     };
 
     //Replace interval with rAF
@@ -371,35 +380,34 @@
 
     //pause when tab hidden to avoid wasted frames @Judges
     document.addEventListener("visibilitychange", () => {
-        running = !document.hidden;
-        if (running && rafId === null) {
-            rafId = requestAnimationFrame(loop);
-        }
-        if (!running && rafId !== null) {
-            cancelAnimationFrame(rafId);
-            rafId = null;
-        }
+      running = !document.hidden;
+      if (running && rafId === null) {
+        rafId = requestAnimationFrame(loop);
+      }
+      if (!running && rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
     });
     /**
-    * main animation loop that requests frames and triggers rendering while the game is running
-    * @param {number} now - the current timestamp provided by requestanimationframe
-    * @returns {void}
-    */
+     * main animation loop that requests frames and triggers rendering while the game is running
+     * @param {number} now - the current timestamp provided by requestanimationframe
+     * @returns {void}
+     */
     function loop(now) {
-        //if (!debug.freeze) {
-        if (!running) {
-            rafId = null;
-            return;
-        }
-        render(now);
-        rafId = requestAnimationFrame(loop);
-        //}
-        //console.info(debug.freeze);
+      //if (!debug.freeze) {
+      if (!running) {
+        rafId = null;
+        return;
+      }
+      render(now);
+      rafId = requestAnimationFrame(loop);
+      //}
+      //console.info(debug.freeze);
     }
 
     //start
     if (rafId) cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(loop);
-</script>
-
+  </script>-->
 </html>
