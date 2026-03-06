@@ -1709,7 +1709,7 @@ const { MDecorative, MSolid, MHazard, MEntity, MPlayer, MEnemy, MEngine, MCheckp
             const cx = this.x + 1, cy = this.y + 1.5;
             const px = player.x + player.w / 2, py = player.y + player.h / 2;
             const dist = Math.hypot(px - cx, py - cy);
-            this.inRange = dist <= MNPC.TALK_RADIUS;
+            this.inRange = dist <= MNPC.TALK_RADIUS && this.room === player.room;
 
             //lose dialogue if player walks away
             if (!this.inRange) {
