@@ -9,7 +9,8 @@ const {
     MCheckpoint, 
     MNPC, 
     MBlob, 
-    MBreakWall
+    MBreakWall,
+    MMinitaur
  } = (() => {
     /** MBox: an AABB hitbox implementation.
      * 
@@ -151,7 +152,7 @@ const {
          */
         constructor(x, y, w, h, texturer) {
             super(MBox.fromWH(x, y, w, h), texturer);
-            this.hbox = new MBox(x, y, x + 1, y + 3);
+            this.hbox = new MBox(x, y, x + w, y + h);
             this.x = x;
             this.y = y;
             this.w = w;
@@ -1169,6 +1170,10 @@ const {
 
         // TODO: ADD JSDOC!!!
         build(room, bitmap, tileMap) {
+            //storage for future ref (maybe for an LOS)
+            room.bitmap = bitmap; 
+
+
             let maxCols = 0;
 
             for (let row = 0; row < bitmap.length; row++) {
@@ -2136,6 +2141,303 @@ const {
         }
     }
 
+    /** MSpear: thrown spear projectile. Sticks into surfaces, then despawns. */
+    class MSpear extends MEntity {
+        static STUCK_DURATION = 3.0;
+        static DAMAGE = 25;
+        static GRAVITY= 18;
+
+        constructor(owner, xv, yv) {
+            //hittttbooooxxxxxx
+            const w = 1.2, h = 0.25;
+            super(
+                owner.x + (owner.facing === 1 ? owner.w : -w),
+                owner.y + owner.h * 0.2,
+                w, h, 1,
+                () => gfx.enemies.minitaur.spear
+            );
+
+            this.engine = owner.engine;
+            this.room = owner.room;
+            this.sroom = owner.room;
+            this.xv = xv;
+            this.yv = yv;
+            this.owner = owner;
+            this.stuck = false;
+            this.stuckTimer = 0;
+            this.angle = Math.atan2(yv, xv);
+            this.dead = false;
+            this._ownerNotified = false;
+        }
+
+        render(ctx, camera, t, pixel) {
+            if (this.dead || !camera.inView(this)) return;
+            const sprite = gfx.enemies.minitaur.spear;
+            const sw = sprite.w * pixel;
+            const sh = sprite.h * pixel;
+            //rotate around the hitbox center
+            const { x, y } = camera.worldToScreen(
+                this.x + this.w / 2,
+                this.y + this.h / 2
+            );
+            ctx.save();
+            ctx.translate(x, y);
+            
+            //apply rot
+            ctx.rotate(this.angle + Math.PI / 2);
+            sprite.draw(ctx, -sw / 2, -sh / 2, pixel);
+            ctx.restore();
+        }
+
+        tick(dt) {
+            if (this.dead) return;
+            const { world, epsilon } = this.engine;
+
+            //count down then vanish
+            if (this.stuck) {
+                this.stuckTimer += dt;
+                if (this.stuckTimer >= MSpear.STUCK_DURATION) this._removeFromRoom();
+                return;
+            }
+
+            //gravity an angle
+            this.yv   += MSpear.GRAVITY * dt;
+            this.angle = Math.atan2(this.yv, this.xv);
+
+            //x movement
+            this.x += this.xv * dt;
+            this.transport();
+            if (this.touching(MSolid, world)) {
+                //push
+                this.x -= this.xv * dt;
+                this.transport();
+                this._stick();
+                return;
+            }
+
+            //y?
+            this.y += this.yv * dt;
+            this.transport();
+            const yt = this.touching(MSolid, world);
+            if (yt) {
+                this.y = this.yv > 0
+                    ? yt.hbox.y1 - this.h - epsilon
+                    : yt.hbox.y2 + epsilon;
+                this.transport();
+                this._stick();
+                return;
+            }
+
+            //player hit
+            const player = this.engine?.player;
+            if (player && player.room === this.room) {
+                this.updateHitbox();
+                player.updateHitbox();
+                if (this.hbox.collision(player.hbox)) {
+                    const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+                    player.xv     = Math.sign(dx || Math.sign(this.xv)) * 12;
+                    player.yv     = -8;
+                    player.health = Math.max(0, player.health - MSpear.DAMAGE);
+                    this._notifyOwner();
+                    this._removeFromRoom();
+                    return;
+                }
+            }
+
+            this.updateHitbox();
+        }
+
+        _stick() {
+            this.stuck = true;
+            this.stuckTimer = 0;
+            this.xv = 0;
+            this.yv = 0;
+            this._notifyOwner();
+            this.updateHitbox();
+        }
+
+        //minitaur (that is hard to spell honeyghost) is never notified twice
+        _notifyOwner() {
+            if (this._ownerNotified) return;
+            this._ownerNotified = true;
+            this.owner?.onSpearDone?.();
+        }
+
+        _removeFromRoom() {
+            if (this.dead) return;
+            this.dead = true;
+            const idx = this.room?.entities.indexOf(this);
+            if (idx != null && idx !== -1) this.room.entities.splice(idx, 1);
+        }
+    }
+
+    /** MMinitaur: spear-throwing enemy. Patrols, aggros on sight, winds up and throws <3 */
+    class MMinitaur extends MEnemy {
+        static THROW_RANGE= 14;
+        static THROW_WINDUP= 0.55;
+        static THROW_COOLDOWN= 2.8;
+        static THROW_SPEED = 18;
+        static ANIM_FPS = { 
+            idle: 4, 
+            run: 8, 
+            jump: 6, 
+            fall: 6 
+        };
+
+        constructor(x, y) {
+            super(x, y, 1.0, 1.4, 60, (t, self) => {
+                const frames = gfx.enemies.minitaur[self.state]
+                            ?? gfx.enemies.minitaur.idle;
+                //single SpriteRef
+                if (!Array.isArray(frames)) return frames;
+                const fps = MMinitaur.ANIM_FPS[self.state] ?? 4;
+                return frames[Math.floor(t * fps) % frames.length];
+            });
+
+            this.moveSpeed = 5;
+            this.aggroRange = 16;
+            this.deAggroRange = 22;
+
+            //throw machinery
+            this._throwing = false;
+            this._windupTimer = 0;
+            this._spearActive = false;
+            this._throwCooldown = 0;
+        }
+
+        /** Called by MSpear once it has either stuck or hit the player. */
+        onSpearDone() {
+            this._spearActive = false;
+            this._throwCooldown = MMinitaur.THROW_COOLDOWN;
+        }
+
+        _launchSpear() {
+            const player = this.engine?.player;
+            if (!player) return;
+
+            const dx  = (player.x + player.w / 2) - (this.x + this.w / 2);
+            const dy  = (player.y + player.h / 2) - (this.y + this.h / 2);
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            const spd = MMinitaur.THROW_SPEED;
+
+            const spear = new MSpear(
+                this,
+                (dx / len) * spd,
+                (dy / len) * spd * 0.25
+            );
+            this._spearActive = true;
+            this.engine.world.addEntity(this.room, spear);
+        }
+
+        _hasLOS() {
+            const player = this.engine?.player;
+            if (!player || player.room !== this.room) return false;
+
+            const bitmap = this.room?.bitmap;
+            const tileMap = this.engine?.world?.tileMap;
+            if (!bitmap || !tileMap) return false;
+
+            //ray from minitaur center to player center
+            let x = Math.round(this.x + this.w / 2);
+            let y = Math.round(this.y + this.h / 2);
+            const x1 = Math.round(player.x + player.w / 2);
+            const y1 = Math.round(player.y + player.h / 2);
+
+            const dx = Math.abs(x1 - x), sx = x < x1 ? 1 : -1;
+            const dy = -Math.abs(y1 - y), sy = y < y1 ? 1 : -1;
+            let err = dx + dy;
+
+            while (true) {
+                if (x === x1 && y === y1) return true;
+                const ch = bitmap[y]?.[x] ?? ' ';
+                const def = tileMap[ch];
+                //blocked by any solid tile
+                if (def && def.type === MSolid) return false;
+                const e2 = 2 * err;
+                if (e2 >= dy) { err += dy; x += sx; }
+                if (e2 <= dx) { err += dx; y += sy; }
+            }
+        }
+
+        ai(dt) {
+            if (this.dead) return;
+            this._throwCooldown = Math.max(0, this._throwCooldown - dt);
+
+            const dist = this._playerDist();
+            const los  = this._hasLOS(); // NEW
+
+            // only aggro if player is in range AND visible
+            if (!this.chaseMode && dist <= this.aggroRange && los) this.chaseMode = true;
+            // drop aggro if out of range OR lost sight for a moment
+            if ( this.chaseMode && (dist > this.deAggroRange || !los))  this.chaseMode = false;
+
+            //windup stand still, face player, then release
+            if (this._throwing) {
+                this._windupTimer += dt;
+                this.facing = this._playerHDir() || this.facing;
+                this.state = 'idle';
+                if (this._windupTimer >= MMinitaur.THROW_WINDUP) {
+                    this._throwing = false;
+                    this._windupTimer = 0;
+                    this._launchSpear();
+                }
+                //no move while doing this^^^^^^
+                return;
+            }
+
+            //dicied to start a throw
+            if (this.chaseMode
+                && !this._spearActive
+                && this._throwCooldown <= 0
+                && this.grounded
+                && dist <= MMinitaur.THROW_RANGE) {
+                this._throwing = true;
+                this._windupTimer = 0;
+                return;
+            }
+
+            //AI movement
+            if (this.chaseMode) {
+                this._updatePath(dt, 0.5);
+                if (this._path?.length) {
+                    this._followPath(dt);
+                } else {
+                    const hDir = this._playerHDir();
+                    if (hDir ===  1) this._moveRight = true;
+                    if (hDir === -1) this._moveLeft  = true;
+                    this.facing = hDir || this.facing;
+                }
+            } else {
+                //patrol
+                if (this.patrolDir === 1) this._moveRight = true;
+                else this._moveLeft  = true;
+                this.facing = this.patrolDir;
+
+                if (this.grounded && Math.abs(this.xv) < 0.15) {
+                    this.stallTimer += dt;
+                    if (this.stallTimer > 0.25) {
+                        this.patrolDir *= -1;
+                        this.stallTimer = 0;
+                    }
+                } else {
+                    this.stallTimer = 0;
+                }
+            }
+
+            //anim state 
+            this.state = !this.grounded
+                ? (this.yv < 0 ? 'jump' : 'fall')
+                : (Math.abs(this.xv) > 0.5 ? 'run' : 'idle');
+        }
+
+        render(ctx, camera, t, pixel) {
+            const { x, y } = camera.worldToScreen(this.x, this.y);
+            const sprite = this.texturer(t, this);
+            const offsetX = (this.w * camera.tsz - sprite.w * pixel) / 2;
+            const offsetY = this.h * camera.tsz - sprite.h * pixel;
+            sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
+        }
+    }
     return { 
         MDecorative, 
         MSolid, 
@@ -2147,6 +2449,7 @@ const {
         MCheckpoint, 
         MNPC, 
         MBlob, 
-        MBreakWall
+        MBreakWall,
+        MMinitaur
     };
 })();

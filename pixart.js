@@ -5707,6 +5707,7 @@ var gfxData = {
     },
 };
 
+
 /** Sprite reference, from spritesheet.
  * 	
  */
