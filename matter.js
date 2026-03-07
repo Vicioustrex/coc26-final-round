@@ -2506,7 +2506,7 @@ const {
                 spearSprite.draw(ctx, -sw / 2, -sh / 2, pixel);
                 ctx.restore();
             }
-        }
+        }   
     }
     return { 
         MDecorative, 

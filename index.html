@@ -163,10 +163,10 @@
         const addShake = (power) => shakes.push(new Shake(power));
         engine.onGroundPound = () => addShake(10);
         engine.groundPoundMult = 2;
-        const ANIM_FPS = {
+        const ANIM_FPS = {  
             idle: 4,
             run:  8,
-            jump: 12,
+            jump: 12,   
             fall: 8,
             groundpound: 10,
             groundpoundimpact: 10,
@@ -176,19 +176,10 @@
         const tileMap = {
             '#': { type: MSolid, tileset: gfx.tiles.A },
             '@': { type: MDecorative, tileset: gfx.tiles.a },
-            'B': { type: MSolid, tileset: gfx.tiles.B }, 
-            'A': { type: MDecorative, tileset: gfx.tiles.B }, 
-            'C': { type: MDecorative, tileset: gfx.tiles.B }, 
-            'D': { type: MDecorative, tileset: gfx.tiles.B }, 
-            // 'b': { type: MMDecorative, tileset: gfx.environment.bush2 }, 
-            // 'c': { type: MDecorative, tileset: gfx.environment.bush3 }, 
-            // 'd': { type: MDecorative, tileset: gfx.environment.rock1 }, 
-            // 'f': { type: MDecorative, tileset: gfx.environment.rock2 }, 
-            // 'g': { type: MDecorative, tileset: gfx.environment.rock3 }, 
-            // 'h': { type: MDecorative, tileset: gfx.environment.grass1 }, 
-            // 'i': { type: MDecorative, tileset: gfx.environment.grass2 }, 
-            // 'j': { type: MDecorative, tileset: gfx.environment.grass3 }, 
-
+            'B': { type: MSolid,tileset: gfx.tiles.B },
+            'b': { type: MDecorative, tileset: gfx.tiles.b },
+            '^': { type: MSolid, tileset: gfx.tiles.C },
+            '=': { type: MSolid, tileset: gfx.tiles.D },
         };
 
         engine.world.init(roomTemplates, worldAssembly, tileMap);
