@@ -1608,7 +1608,10 @@ const {
             if (this.slowMo) dt *= this.slowMoScale;
             this.events = events;
             this.lastDt = dt;
-            this.renderer.render(t);
+            //for transistions 
+            if (!this.renderer._skipRender) this.renderer.render(t);
+
+            //this.renderer.render(t);
             this.player.tick(dt, events);
             if (this.player.health <= 0) {
                 this.player.x = this.player.sx;
@@ -2189,9 +2192,25 @@ const {
             ctx.restore();
         }
 
+        _updateTipHitbox() {
+            const tipSize = 0.2;
+            const tipX = (this.x + this.w / 2) + Math.cos(this.angle) * (this.w / 2) - tipSize / 2;
+            const tipY = (this.y + this.h / 2) + Math.sin(this.angle) * (this.w / 2) - tipSize / 2;
+            this.hbox.setWH(tipX, tipY, tipSize, tipSize);
+        }
+
         tick(dt) {
             if (this.dead) return;
             const { world, epsilon } = this.engine;
+
+            if (this.stuck) {
+                this.stuckTimer += dt;
+                if (this.stuckTimer >= MSpear.STUCK_DURATION) {
+                    this.owner?.onSpearDone?.();
+                    this._removeFromRoom();
+                }
+                return;
+            }
 
             //count down then vanish
             if (this.stuck) {
@@ -2201,7 +2220,7 @@ const {
             }
 
             //gravity an angle
-            this.yv   += MSpear.GRAVITY * dt;
+            this.yv += MSpear.GRAVITY * dt;
             this.angle = Math.atan2(this.yv, this.xv);
 
             //x movement
@@ -2231,7 +2250,8 @@ const {
             //player hit
             const player = this.engine?.player;
             if (player && player.room === this.room) {
-                this.updateHitbox();
+                //this.updateHitbox();
+                this._updateTipHitbox();
                 player.updateHitbox();
                 if (this.hbox.collision(player.hbox)) {
                     const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
@@ -2244,7 +2264,8 @@ const {
                 }
             }
 
-            this.updateHitbox();
+            //this.updateHitbox();
+            this._updateTipHitbox();
         }
 
         _stick() {
@@ -2252,10 +2273,9 @@ const {
             this.stuckTimer = 0;
             this.xv = 0;
             this.yv = 0;
-            this._notifyOwner();
-            this.updateHitbox();
+            this.owner?.onSpearStuck?.(this);
+            this._updateTipHitbox();
         }
-
         //minitaur (that is hard to spell honeyghost) is never notified twice
         _notifyOwner() {
             if (this._ownerNotified) return;
@@ -2303,6 +2323,9 @@ const {
             this._windupTimer = 0;
             this._spearActive = false;
             this._throwCooldown = 0;
+
+            this._spear = null;
+                this._retrieving = false;
         }
 
         /** Called by MSpear once it has either stuck or hit the player. */
@@ -2315,8 +2338,8 @@ const {
             const player = this.engine?.player;
             if (!player) return;
 
-            const dx  = (player.x + player.w / 2) - (this.x + this.w / 2);
-            const dy  = (player.y + player.h / 2) - (this.y + this.h / 2);
+            const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+            const dy = (player.y + player.h / 2) - (this.y + this.h / 2);
             const len = Math.sqrt(dx * dx + dy * dy) || 1;
             const spd = MMinitaur.THROW_SPEED;
 
@@ -2325,8 +2348,21 @@ const {
                 (dx / len) * spd,
                 (dy / len) * spd * 0.25
             );
+            this._spear = spear;
             this._spearActive = true;
             this.engine.world.addEntity(this.room, spear);
+        }
+
+        onSpearStuck(spear) {
+            this._spear = spear;
+            this._retrieving = true;
+        }
+
+        onSpearDone() {
+            this._spearActive = false;
+            this._retrieving = false;
+            this._spear = null;
+            this._throwCooldown = MMinitaur.THROW_COOLDOWN;
         }
 
         _hasLOS() {
@@ -2361,7 +2397,24 @@ const {
 
         ai(dt) {
             if (this.dead) return;
+
+            if (this._retrieving && this._spear) {
+                const dx = (this._spear.x + this._spear.w / 2) - (this.x + this.w / 2);
+                if (Math.abs(dx) < 0.8) {
+                    this._spear._removeFromRoom();
+                    this.onSpearDone();
+                } else {
+                    if (dx > 0) this._moveRight = true;
+                    else this._moveLeft = true;
+                    this.facing = dx > 0 ? 1 : -1;
+                    this.state = Math.abs(this.xv) > 0.5 ? 'run' : 'idle';
+                }
+                return;
+            }
+
             this._throwCooldown = Math.max(0, this._throwCooldown - dt);
+            
+
 
             const dist = this._playerDist();
             const los  = this._hasLOS(); // NEW
@@ -2436,6 +2489,23 @@ const {
             const offsetX = (this.w * camera.tsz - sprite.w * pixel) / 2;
             const offsetY = this.h * camera.tsz - sprite.h * pixel;
             sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
+
+            // hovering spear
+            if (!this._spearActive && !this._throwing && !this._retrieving) {
+                const spearSprite = gfx.enemies.minitaur.spear;
+                const { x: sx, y: sy } = camera.worldToScreen(
+                    this.x + this.w / 2 + this.facing * 0.9,
+                    this.y + this.h * 0.4
+                );
+                const sw = spearSprite.w * pixel;
+                const sh = spearSprite.h * pixel;
+                const bob = Math.sin(t * 3) * 2;
+                ctx.save();
+                ctx.translate(sx, sy + bob);
+                ctx.rotate(0);
+                spearSprite.draw(ctx, -sw / 2, -sh / 2, pixel);
+                ctx.restore();
+            }
         }
     }
     return { 

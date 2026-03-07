@@ -367,13 +367,15 @@
                         ctx.fillRect(0, 0, width, height);
                     }
 
-                    //I'm getting lazy with the comments
                     ctx.save();
                     ctx.translate(shake.x, shake.y);
-                    roomTransition.drawNewRoom(ctx);
                     roomTransition.drawOldRoom(ctx);
+                    roomTransition.drawNewRoom(ctx);
                     ctx.restore();
-                    engine.tick(t, dt, events);
+
+                    engine.renderer._skipRender = true;
+                    engine.tick(t, dt, {});
+                    engine.renderer._skipRender = false;
                     roomTransition.tick(dt);
                 } else {
                     ctx.save();
