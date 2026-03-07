@@ -13,7 +13,7 @@ const roomTemplates = {
             "#   ###            #",
             "#   #              #", 
             "#         ######   #",
-            "#        ##        W",
+            "#        ##         ",
             "#  W                ",
             "#              ##   ",
             "#       @@@@        ",
@@ -29,7 +29,7 @@ const roomTemplates = {
             'C': (x, y) => new MCheckpoint(x, y - 3),
             'N': (x, y) => new MNPC(x, y - 0.5, [
                 "hiiiii",   
-                "My name is classified",
+                "My name is Vicioustrex :P",
                 ".",
                 "..",
                 "...",
