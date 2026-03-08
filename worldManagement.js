@@ -30,11 +30,11 @@ const roomTemplates = {
             'C': (x, y) => new MCheckpoint(x, y - 3),
             'N': (x, y) => new MNPC(x, y - 0.5, [
                 "hiiiii",   
-                "My name is classified",
-                ".",
-                "..",
-                "...",
-                "You don't know me son",
+                "nl changed this line lol",
+                "he probably wont change it back",
+                "while typing this",
+                "he noticed it was predicting his text",
+                "this is really weird lol",
             ], 'pakala'),
             'K': (x, y) => new MNPC(x, y - 0.6, [
                 "hiiiii",   
