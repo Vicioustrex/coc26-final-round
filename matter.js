@@ -615,14 +615,14 @@ const {
                 let dx = this.dragX - this.dragInitX;
                 let dy = this.dragY - this.dragInitY;
                 const len = Math.sqrt(dx * dx + dy * dy);
-                if (len < minDrag) {
+                if (len < this.constructor.minDrag) {
                     //too small a drag
                     this.carrying = true;
                 } else {
                     //real throw
                     this.carrying = false;
                     this.ball = null;
-                    if (len > maxDrag) {
+                    if (len > this.constructor.maxDrag) {
                         dx = dx / len * this.constructor.maxDrag;
                         dy = dy / len * this.constructor.maxDrag;
                     }
@@ -2584,6 +2584,9 @@ const {
             this.throwxv = 0;
             this.throwyv = 0;
             this.throwing = false;
+            this._throwTimer = 0;
+            this._throwDuration = 0;
+            this.tpBall = false;
         } 
 
         ai(dt) {
@@ -2672,6 +2675,15 @@ const {
                     this.throwyv = yv;
                     this.thrown = true;
                     this._ballTimer = 0;
+                    this._throwDuration = p.x / xv;
+                }
+            } else if (this.throwing) {
+                this._throwTimer += dt;
+                if (this._throwTimer >= this._throwDuration) {
+                    window.console.log("HI")
+                    this.tpBall = true;
+                    this._throwTimer = 0;
+                    this.throwing = false;
                 }
             }
         }
@@ -2733,7 +2745,6 @@ const {
                 this.thrown = false;
                 this.throwing = true;
             }
-            this.ball?.tick?.(dt);
             /* else if (events.Mouse && !this.prevMouse && this.ball && this.carrying) {
                 this.carrying = false;
                 this.dragging = true;
@@ -2741,7 +2752,7 @@ const {
                 this.dragInitY = events.MouseY;
                 this.dragX = events.MouseX;
                 this.dragY = events.MouseY;
-            } else if (events.Mouse && !this.prevMouse && this.ball) {
+            }*/ else if (this.tpBall && this.ball) {
                 //click while ball is out so holding and dragging right away works for quick chaining
                 this.x = this.ball.x + this.ball.w / 2 - this.w / 2;
                 this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
@@ -2749,7 +2760,6 @@ const {
                 this.yv = this.ball.yv;
                 this.room = this.ball.room;
                 this.transport();
-                this.engine.slowMo = true;
                 //ball stays alive
                 this.dragging = true;
                 this.dragInitX = events.MouseX;
@@ -2757,7 +2767,7 @@ const {
                 this.dragX = events.MouseX;
                 this.dragY = events.MouseY;
 
-                //push player out of any wall they landed in
+                //push mimic out of any wall they landed in
                 const world = this.engine.world;
                 this.updateHitbox();
                 if (this.touching(MSolid, world)) {
@@ -2780,7 +2790,8 @@ const {
                 }
                 this.transport();
             }
-
+            this.ball?.tick?.(dt);
+            /*
             //exit slowmo on keypress or on landing also pretty important
             if (this.engine.slowMo) {
                 if (events.KeyA || events.KeyD || events.KeyW || events.KeyS) {
@@ -2808,7 +2819,7 @@ const {
                 this.ball.y = this.y - 0.55;
                 this.ball.room = this.room;
                 this.ball.updateHitbox();
-            }*/
+            }
 
             if (events.KeyA) this.facing = -1;
             if (events.KeyD) this.facing = 1;/*
