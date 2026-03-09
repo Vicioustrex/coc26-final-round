@@ -630,7 +630,17 @@ const {
                 this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
                 this.xv = this.ball.xv;
                 this.yv = this.ball.yv;
-                this.room = this.ball.room;
+                if (this.ball.room != this.room) {
+                    const dr = this.ball.room.row - this.room.row;
+                    const dc = this.ball.room.col - this.room.col;
+                    this.room = this.ball.room;
+                    // if to adjacent room, otherwise way too complicated
+                    if (Math.abs(dr) + Math.abs(dc) == 1) {
+                        const dir = dc > 0 ? 'right' : dc < 0 ? 'left' : dr > 0 ? 'bottom' : 'top';
+                        this._roomChangedThisFrame = true;
+                        this.engine.onRoomChange?.(dir);
+                    }
+                }
                 this.transport();
                 this.engine.slowMo = true;
                 this.carrying = true;
