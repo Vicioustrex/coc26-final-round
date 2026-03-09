@@ -72,6 +72,8 @@
              constructor() {
                 this.snap = document.createElement('canvas');
                 this.snapNew = document.createElement('canvas');
+                this.oldTsz = 0;
+                this.newTsz = 0;
                 this.newCaptured = false;
                 this.active = false;
                 this.dir = null;
@@ -80,19 +82,18 @@
                 this.duration = 0.3;
             }
 
-            capture(sourceCanvas) {
-                this.snap.width = sourceCanvas.effectiveWidth;
-                this.snap.height = sourceCanvas.effectiveHeight;
-                // lol we just bein too lazy to save the context
-                this.snap.getContext('2d').scale(1 / dprVal, 1 / dprVal);
+            capture(sourceCanvas, engine) {
+                this.snap.width = sourceCanvas.width;
+                this.snap.height = sourceCanvas.height;
                 this.snap.getContext('2d').drawImage(sourceCanvas, 0, 0);
+                this.oldTsz = engine.renderer.camera.tsz;
             }
 
-            captureNew(sourceCanvas) {
-                this.snapNew.width = sourceCanvas.effectiveWidth;
-                this.snapNew.height = sourceCanvas.effectiveHeight;
-                this.snapNew.getContext('2d').scale(1 / dprVal, 1 / dprVal);
+            captureNew(sourceCanvas, engine) {
+                this.snapNew.width = sourceCanvas.width;
+                this.snapNew.height = sourceCanvas.height;
                 this.snapNew.getContext('2d').drawImage(sourceCanvas, 0, 0);
+                this.newTsz = engine.renderer.camera.tsz;
                 this.newCaptured = true;
             }
 
@@ -117,45 +118,65 @@
             }
 
             //where the new room starts (off-screen) and slides to (0,0)
-            getNewOffset(w, h) {
+            getNewOffset(canvasW, canvasH, scale) {
                 const p = this.eased;
                 switch (this.dir) {
                     case 'right':
-                        return { x:  w * (1 - p), y: 0 };
+                        return { x: effectiveWidth * (1 - p), y: 0 };
                     case 'left':
-                        return { x: -w * (1 - p), y: 0 };
+                        return { x: effectiveWidth * p - canvasW * scale, y: 0 };
                     case 'bottom': 
-                        return { x: 0, y:  h * (1 - p) };
+                        return { x: 0, y: effectiveHeight * (1 - p) };
                     case 'top':
-                        return { x: 0, y: -h * (1 - p) };
+                        return { x: 0, y: effectiveHeight * p - canvasH * scale };
                 }
                 return { x: 0, y: 0 };
             }
 
             //where the old room slides to (away from 0,0)
-            getOldOffset(w, h) {
+            getOldOffset(canvasW, canvasH, scale) {
                 const p = this.eased;
                 switch (this.dir) {
                     case 'right':  
-                        return { x: -w * p, y: 0 };
+                        return { x: effectiveWidth * (1 - p) - canvasW * scale, y: 0 };
                     case 'left':    
-                        return { x:  w * p, y: 0 };
+                        return { x: effectiveWidth * p, y: 0 };
                     case 'bottom': 
-                        return { x: 0, y: -h * p };
+                        return { x: 0, y: effectiveHeight * (1 - p) - canvasH * scale };
                     case 'top':    
-                        return { x: 0, y:  h * p };
+                        return { x: 0, y: effectiveHeight * p };
                 }
                 return { x: 0, y: 0 };
             }
 
+            get oldScale() {
+                const p = this.eased;
+                return lerp(this.oldTsz, this.newTsz, p) / this.oldTsz / dprVal;
+            }
+
+            get newScale() {
+                const p = this.eased;
+                return lerp(this.oldTsz, this.newTsz, p) / this.newTsz / dprVal;
+            }
+
             drawOldRoom(ctx) {
-                const { x, y } = this.getOldOffset(this.snap.width, this.snap.height);
-                ctx.drawImage(this.snap, x, y);
+                const scale = this.oldScale;
+                const { x, y } = this.getOldOffset(this.snap.width, this.snap.height, scale);
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(scale, scale);
+                ctx.drawImage(this.snap, 0, 0);
+                ctx.restore();
             }
 
             drawNewRoom(ctx) {
-                const { x, y } = this.getNewOffset(this.snapNew.width, this.snapNew.height);
-                ctx.drawImage(this.snapNew, x, y);
+                const scale = this.newScale;
+                const { x, y } = this.getNewOffset(this.snapNew.width, this.snapNew.height, scale);
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(scale, scale);
+                ctx.drawImage(this.snapNew, 0, 0);
+                ctx.restore();
             }
         }
 
@@ -230,8 +251,9 @@
         });
         
         //P stands for player lol
-        outer:
-        for (let ri = 0; ri < engine.world.rooms.length; ri++) {
+        // oh hey look arrow or someone used the technique i introduced! yay -xyzyyxx
+        // labeling loops
+        outer: for (let ri = 0; ri < engine.world.rooms.length; ri++) {
             for (let ci = 0; ci < engine.world.rooms[ri].length; ci++) {
                 const room = engine.world.rooms[ri][ci];
                 const key = worldAssembly[ri]?.[ci];
@@ -281,7 +303,7 @@
         const roomTransition = new RoomTransition();
         engine.onRoomChange = (dir) => {
             if (roomTransition.active) return;
-            roomTransition.capture(canvas);
+            roomTransition.capture(canvas, engine);
             roomTransition.start(dir);
         };
 
@@ -369,17 +391,17 @@
                 if (roomTransition.active) {
                     if (!roomTransition.newCaptured) {
                         const cam = engine.renderer.camera;
-                        cam.lockZoom = true;
-                        if (roomTransition.dir === 'left' || roomTransition.dir === 'right') {
+                        //cam.lockZoom = true;
+                        /*if (roomTransition.dir === 'left' || roomTransition.dir === 'right') {
                             cam.lockFocusY = true;
                         } else {
                             cam.lockFocusX = true;
-                        }
-                        engine.renderer.render(t);
+                        }*/
+                        engine.renderer.render(t);/*
                         cam.lockZoom   = false;
                         cam.lockFocusX = false;
-                        cam.lockFocusY = false;
-                        roomTransition.captureNew(canvas);
+                        cam.lockFocusY = false;*/
+                        roomTransition.captureNew(canvas, engine);
                         ctx.fillStyle = "rgb(100, 100, 100)";
                         ctx.fillRect(0, 0, width, height);
                     }
@@ -415,7 +437,7 @@
                     roomTransition.tick(dt);
                 }
 
-                renderHUD(ctx, engine.player, engine.renderer.pixel);
+                renderHUD(ctx, engine.player, engine.renderer.basePixel);
 
                 //ctx.restore();
                 frameCount++;

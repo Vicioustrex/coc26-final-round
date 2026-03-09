@@ -48,3 +48,8 @@ function mapToLine(x1, y1, x2, y2, percentage) {
         y : y1 * (1.0 - percentage) + y2 * percentage
     };
 }
+
+/** Creates a global getter */
+function globalGetter(name, f) {
+    Object.defineProperty(globalThis, name, { get () { return f(); }});
+}

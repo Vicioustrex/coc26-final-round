@@ -10,6 +10,8 @@ const ctx = canvas.getContext('2d');
 //width and height are changeable
 let width = canvas.width;
 let height = canvas.height;
+globalGetter("effectiveWidth", () => canvas.effectiveWidth);
+globalGetter("effectiveHeight", () => canvas.effectiveHeight);
 
 const BASE_WIDTH = 600;
 const BASE_HEIGHT = 600;

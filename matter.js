@@ -721,7 +721,6 @@ const {
 
             this._wasGrounded = this.grounded;
             this.prevMouse = events.Mouse;
-            window.console.log(this.carrying)
         }
 
         /** Renders the thing
@@ -1471,6 +1470,7 @@ const {
             this.tsz = tileSize;
             this.res = resolution;
             this.pixel = tileSize / resolution;
+            this.basePixel = tileSize / resolution;
             this.camera = new MCamera({ canvas: this.canvas, tileSize: this.tsz });
         }
         
