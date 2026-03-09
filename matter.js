@@ -249,6 +249,7 @@ const {
          */
         updateHitbox() {
             this.hbox.setWH(this.x, this.y, this.w, this.h);
+            this.dbox.setWH(this.x, this.y, this.w, this.h);
         }
 
         /** Transport entity to a different room if it enters one
@@ -466,7 +467,8 @@ const {
             this.dragInitY = 0;
             this.dragX = 0;
             this.dragY = 0;
-            this.ball = null;
+            this.ball = null; //new MBall(this, 0, 0);
+            this.carrying = true;
 
             this.maxDrag = 120;
         }
@@ -602,12 +604,12 @@ const {
                 this.dragInitY = events.MouseY;
                 this.dragX = events.MouseX;
                 this.dragY = events.MouseY;
-
+                this.ball = new MBall(this, 0, 0);
+                this.carrying = true;
             } else if (events.Mouse && this.dragging) {
                 //update drag
                 this.dragX = events.MouseX;
                 this.dragY = events.MouseY;
-
             } else if (!events.Mouse && this.dragging) {
                 this.dragging = false;
                 this.engine.slowMo = false;
@@ -615,13 +617,12 @@ const {
                 let dx = this.dragX - this.dragInitX;
                 let dy = this.dragY - this.dragInitY;
                 const len = Math.sqrt(dx * dx + dy * dy);
+                this.carrying = false;
                 if (len < this.constructor.minDrag) {
                     //too small a drag
-                    this.carrying = true;
+                    this.ball = null;
                 } else {
                     //real throw
-                    this.carrying = false;
-                    this.ball = null;
                     if (len > this.constructor.maxDrag) {
                         dx = dx / len * this.constructor.maxDrag;
                         dy = dy / len * this.constructor.maxDrag;
@@ -632,14 +633,14 @@ const {
                     );
                 }
 
-            } else if (events.Mouse && !this.prevMouse && this.ball && this.carrying) {
-                this.carrying = false;
+            } /*else if (events.Mouse && !this.prevMouse && this.ball && this.carrying) {
+                //this.carrying = false;
                 this.dragging = true;
                 this.dragInitX = events.MouseX;
                 this.dragInitY = events.MouseY;
                 this.dragX = events.MouseX;
                 this.dragY = events.MouseY;
-            } else if (events.Mouse && !this.prevMouse && this.ball) {
+            } */else if (events.Mouse && !this.prevMouse && this.ball) {
                 //click while ball is out so holding and dragging right away works for quick chaining
                 this.x = this.ball.x + this.ball.w / 2 - this.w / 2;
                 this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
@@ -683,19 +684,16 @@ const {
             if (this.engine.slowMo) {
                 if (events.KeyA || events.KeyD || events.KeyW || events.KeyS) {
                     this.engine.slowMo = false;
-                    this.carrying = true;
                 }
                 if (this.grounded && !this._wasGrounded) {
                     this.engine.slowMo = false;
-                    this.ball = null;
-                    this.carrying = false;
                 }
             }
 
-            //recall ball to player on any keypress while it's in free flight
+            //remove ball on any keypress while it's in free flight
             if (this.ball && !this.carrying && !this.engine.slowMo && !this.dragging) {
                 if (events.KeyA || events.KeyD || events.KeyW || events.KeyS) {
-                    this.carrying = true;
+                    this.ball = null;
                 }
             }
 
@@ -2620,6 +2618,7 @@ const {
 
         _ballChase(dt) {
             if (!this.throwing) {
+                this.carrying = true;
                 this._ballTimer += dt;
                 if (this._ballTimer >= this.constructor.aimTime) {
                     // this uses a parabolic simulator and minimizing using calculus
@@ -2659,8 +2658,8 @@ const {
                     const g = this.engine.gravity;
                     const delx = p.x - this.x;
                     const dely = p.y - this.y;
-                    const xv = delx * Math.pow(1 / 4 * g * g / (delx * delx + dely * dely), 1 / 4);
-                    const yv = (dely * xv - 1 / 2 * g * delx * delx / xv) / delx;
+                    let xv = delx * Math.pow(1 / 4 * g * g / (delx * delx + dely * dely), 1 / 4);
+                    let yv = (dely * xv - 1 / 2 * g * delx * delx / xv) / delx;
                     const maxDrag = this.constructor.maxDrag;
                     if (xv * xv + yv * yv > maxDrag * maxDrag) {
                         const factor = maxDrag / Math.sqrt(xv * xv + yv * yv);
@@ -2674,13 +2673,14 @@ const {
                     this.throwxv = xv;
                     this.throwyv = yv;
                     this.thrown = true;
+                    this.carrying = false;
                     this._ballTimer = 0;
-                    this._throwDuration = p.x / xv;
+                    this._throwDuration = delx / xv;
+                    window.console.log(xv, yv)
                 }
             } else if (this.throwing) {
                 this._throwTimer += dt;
                 if (this._throwTimer >= this._throwDuration) {
-                    window.console.log("HI")
                     this.tpBall = true;
                     this._throwTimer = 0;
                     this.throwing = false;
@@ -2733,7 +2733,10 @@ const {
          * @returns {void}
          */ 
         tick(dt) {
-            //super.tick(dt);
+            super.tick(dt);
+            if (this.carrying && !this.ball) {
+                this.ball = new MBall(this, 0, 0);
+            }
             if (this.thrown) {
                 //real throw
                 //this.carrying = false;
@@ -2744,29 +2747,18 @@ const {
                 );
                 this.thrown = false;
                 this.throwing = true;
-            }
-            /* else if (events.Mouse && !this.prevMouse && this.ball && this.carrying) {
-                this.carrying = false;
-                this.dragging = true;
-                this.dragInitX = events.MouseX;
-                this.dragInitY = events.MouseY;
-                this.dragX = events.MouseX;
-                this.dragY = events.MouseY;
-            }*/ else if (this.tpBall && this.ball) {
+            } else if (this.tpBall && this.ball) {
                 //click while ball is out so holding and dragging right away works for quick chaining
                 this.x = this.ball.x + this.ball.w / 2 - this.w / 2;
                 this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
                 this.xv = this.ball.xv;
                 this.yv = this.ball.yv;
                 this.room = this.ball.room;
+                this.tpBall = false;
+                this.throwing = false;
+                this.ball = null;
                 this.transport();
-                //ball stays alive
-                this.dragging = true;
-                this.dragInitX = events.MouseX;
-                this.dragInitY = events.MouseY;
-                this.dragX = events.MouseX;
-                this.dragY = events.MouseY;
-
+                
                 //push mimic out of any wall they landed in
                 const world = this.engine.world;
                 this.updateHitbox();
@@ -2790,8 +2782,7 @@ const {
                 }
                 this.transport();
             }
-            this.ball?.tick?.(dt);
-            /*
+            this.ball?.tick?.(dt);/*
             //exit slowmo on keypress or on landing also pretty important
             if (this.engine.slowMo) {
                 if (events.KeyA || events.KeyD || events.KeyW || events.KeyS) {
@@ -2804,13 +2795,13 @@ const {
                     this.carrying = false;
                 }
             }
-
+            /*
             //recall ball to player on any keypress while it's in free flight
             if (this.ball && !this.carrying && !this.engine.slowMo && !this.dragging) {
                 if (events.KeyA || events.KeyD || events.KeyW || events.KeyS) {
                     this.carrying = true;
                 }
-            }
+            }*/
 
             if (this.ball && this.carrying) {
                 this.ball.xv = 0;
@@ -2820,37 +2811,9 @@ const {
                 this.ball.room = this.room;
                 this.ball.updateHitbox();
             }
-
+            /*
             if (events.KeyA) this.facing = -1;
-            if (events.KeyD) this.facing = 1;/*
-
-            if (this.groundPounding && this.grounded) {
-                this.groundPounding = false;
-                this.impactTime = 0;
-                this.engine.onGroundPound?.();
-            }
-
-            const impactDuration = 0.4;
-            if (this.impactTime !== null && this.impactTime > impactDuration) {
-                this.impactTime = null;
-            }
-
-            if (this.groundPounding) {
-                this.state = 'groundpound';
-            } else if (this.impactTime !== null) {
-                this.state = 'groundpoundimpact';
-            } else if (this.dragging && !this.carrying && !this.ball) {
-                this.state = 'throw';
-            } else if (!this.grounded) {
-                this.airTime = (this.airTime ?? 0) + dt;
-                this.state = this.yv < 0 ? 'jump' : 'fall';
-            } else {
-                this.airTime = 0;
-                this.state = Math.abs(this.xv) > 0.5 ? 'run' : 'idle';
-            }
-
-            this._wasGrounded = this.grounded;
-            this.prevMouse = events.Mouse;*/
+            if (events.KeyD) this.facing = 1;*/
         }
     }
 
