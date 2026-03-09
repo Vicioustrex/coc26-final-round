@@ -589,14 +589,6 @@ const {
             //enemies hit when the player carrying basically a convulated way of accomplishing that
             if (!this.carrying) this.ball?.tick?.(dt, {}, { friction: 1 });
 
-            //during slowmo keep ball glued to player center so they fall together
-            if (this.ball && this.engine.slowMo) {
-                this.ball.x = (this.x + this.w / 2 - this.ball.w / 2) + 0.1;
-                this.ball.y = this.y - 0.55;
-                this.ball.room = this.room;
-                this.ball.updateHitbox();
-            }
-
             if (events.Mouse && !this.prevMouse && !this.ball) {
                 //start drag
                 this.dragging = true;
@@ -632,15 +624,7 @@ const {
                         dy / tsz * MPlayer.throwFactor,
                     );
                 }
-
-            } /*else if (events.Mouse && !this.prevMouse && this.ball && this.carrying) {
-                //this.carrying = false;
-                this.dragging = true;
-                this.dragInitX = events.MouseX;
-                this.dragInitY = events.MouseY;
-                this.dragX = events.MouseX;
-                this.dragY = events.MouseY;
-            } */else if (events.Mouse && !this.prevMouse && this.ball) {
+            } else if (events.Mouse && !this.prevMouse && this.ball) {
                 //click while ball is out so holding and dragging right away works for quick chaining
                 this.x = this.ball.x + this.ball.w / 2 - this.w / 2;
                 this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
@@ -649,6 +633,7 @@ const {
                 this.room = this.ball.room;
                 this.transport();
                 this.engine.slowMo = true;
+                this.carrying = true;
                 //ball stays alive
                 this.dragging = true;
                 this.dragInitX = events.MouseX;
@@ -736,6 +721,7 @@ const {
 
             this._wasGrounded = this.grounded;
             this.prevMouse = events.Mouse;
+            window.console.log(this.carrying)
         }
 
         /** Renders the thing
@@ -2676,7 +2662,6 @@ const {
                     this.carrying = false;
                     this._ballTimer = 0;
                     this._throwDuration = delx / xv;
-                    window.console.log(xv, yv)
                 }
             } else if (this.throwing) {
                 this._throwTimer += dt;
