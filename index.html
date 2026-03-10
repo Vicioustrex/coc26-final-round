@@ -250,6 +250,9 @@
             return frames[frame];
         });
         
+        engine._collectAnims = [];
+        engine._hudFlash = {};
+
         //P stands for player lol
         // oh hey look arrow or someone used the technique i introduced! yay -xyzyyxx
         // labeling loops
@@ -314,10 +317,9 @@
          * @param {number}   pixel - engine.renderer.pixel
          */
         function renderHUD(ctx, player, pixel) {
+            //hearts
             const MAX_HEARTS = 3;
-
             const filledHearts = Math.ceil((player.health / player.maxHealth) * MAX_HEARTS);
-
             const heartSprite = gfx.player.heartFull;
             const heartW = heartSprite.w * pixel;
             const heartH = heartSprite.h * pixel;
@@ -326,16 +328,70 @@
             const marginY = Math.round(pixel * 2);
 
             for (let i = 0; i < MAX_HEARTS; i++) {
-                const sprite = i < filledHearts
-                    ? gfx.player.heartFull
-                    : gfx.player.heartEmpty;
+                const sprite = i < filledHearts ? gfx.player.heartFull : gfx.player.heartEmpty;
+                sprite.draw(ctx, marginX + i * (heartW + gap), marginY, pixel);
+            }
 
-                sprite.draw(
-                    ctx,
-                    marginX + i * (heartW + gap),
-                    marginY,
-                    pixel
-                );
+            //power icons
+            const powerOrder = ['ball', 'groundedTeleport', 'groundPound', 'fullTeleport'];
+            const powerSprites = {
+                ball: gfx.player.spikeBall,
+                groundedTeleport:gfx.props.misc.pwrSym_groundedTeleport,
+                groundPound: gfx.props.misc.pwrSym_groundPound,
+                fullTeleport: gfx.props.misc.pwrSym_fullTeleport,
+            };
+
+            const ref = gfx.player.spikeBall;
+            const iconW = ref.w * pixel;
+            const iconH = ref.h * pixel;
+            const iconGap = Math.round(pixel * 4);
+            const totalW = powerOrder.length * iconW + (powerOrder.length - 1) * iconGap;
+            const hudX0 = Math.round((width  - totalW) / 2);
+            const hudY = Math.round(height - iconH - pixel * 4);
+
+            powerOrder.forEach((power, i) => {
+                const sprite = powerSprites[power];
+                if (!sprite) return;
+
+                const ix = hudX0 + i * (iconW + iconGap);
+                const flash = engine._hudFlash?.[power] ?? 0;
+
+                ctx.save();
+                if (!player.powers[power]) {
+                    ctx.globalAlpha = 0.22;
+                } else if (flash > 0) {
+                    const scale = 1 + flash * 0.6;
+                    ctx.translate(ix + iconW / 2, hudY + iconH / 2);
+                    ctx.scale(scale, scale);
+                    ctx.translate(-(ix + iconW / 2), -(hudY + iconH / 2));
+                }
+                sprite.draw(ctx, ix, hudY, pixel);
+                ctx.restore();
+            });
+
+            //flying-collect animations 
+            for (const anim of engine._collectAnims ?? []) {
+                const sprite = powerSprites[anim.type];
+                if (!sprite) continue;
+
+                const idx = powerOrder.indexOf(anim.type);
+                const destX = hudX0 + idx * (iconW + iconGap) + iconW / 2;
+                const destY = hudY  + iconH / 2;
+
+                const p = Math.min(anim.progress / anim.duration, 1);
+                const ease = 1 - Math.pow(1 - p, 3);
+                const cx = lerp(anim.startX, destX, ease);
+                const cy = lerp(anim.startY, destY, ease);
+                const sc = lerp(2.2, 1.0, ease);
+                const sw = sprite.w * pixel;
+                const sh = sprite.h * pixel;
+
+                ctx.save();
+                ctx.globalAlpha = lerp(1, 0.7, ease);
+                ctx.translate(cx, cy);
+                ctx.scale(sc, sc);
+                sprite.draw(ctx, -sw / 2, -sh / 2, pixel);
+                ctx.restore();
             }
         }
 
@@ -435,6 +491,19 @@
 
                     ctx.restore();
                     roomTransition.tick(dt);
+                }
+
+
+                //advance collect animations
+                if (engine._collectAnims) {
+                    for (const anim of engine._collectAnims) anim.progress += dt;
+                    engine._collectAnims = engine._collectAnims.filter(a => a.progress < a.duration);
+                }
+                //tick HUD flash timers down
+                if (engine._hudFlash) {
+                    for (const k of Object.keys(engine._hudFlash)) {
+                        engine._hudFlash[k] = Math.max(0, engine._hudFlash[k] - dt);
+                    }
                 }
 
                 renderHUD(ctx, engine.player, engine.renderer.basePixel);
