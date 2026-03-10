@@ -47,7 +47,7 @@
         
 
         //for testing
-        //engine.renderer.debug = true;
+        engine.renderer.debug = true;
 
         const shakes = [];
         const shake = { x: 0, y: 0 };
@@ -207,7 +207,7 @@
 
         
 
-        engine.createPlayer(5, 5, 0.97, 1.4, (t, player) => { 
+        engine.createPlayer(5, 5, 0.80, 1.4, (t, player) => { 
             const state = player.state ?? 'idle';
             const carryMap = { idle: 'carryidle', run: 'carryrun', jump: 'carryjump', fall: 'carryfall' };
             const holding = player.ball && (player.engine.slowMo || player.dragging || player.carrying);

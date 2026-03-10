@@ -174,7 +174,7 @@ const {
             const sprite = this.texturer(t, this);
 
             //offset so sprite is centered on hitbox
-            const offsetX = (this.w * camera.tsz - sprite.w * pixel) / 2;
+            const offsetX = ((this.w * camera.tsz - sprite.w * pixel) / 2) - 2;
             const offsetY = (this.h * camera.tsz - sprite.h * pixel) / 2;
 
             sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
@@ -1468,19 +1468,19 @@ const {
          * @param {number} y 
          * @returns {{ x: number, y: number }}
          */
-        // worldToScreen(x, y) {
-        //     return {
-        //         x: (x - this.focusX) * this.tsz + this.w / 2,
-        //         y: (y - this.focusY) * this.tsz + this.h / 2,
-        //     };
-        // }
-
         worldToScreen(x, y) {
             return {
-                x: Math.round((x - this.focusX) * this.tsz + this.w / 2),
-                y: Math.round((y - this.focusY) * this.tsz + this.h / 2),
+                x: (x - this.focusX) * this.tsz + this.w / 2,
+                y: (y - this.focusY) * this.tsz + this.h / 2,
             };
         }
+
+        // worldToScreen(x, y) {
+        //     return {
+        //         x: Math.round((x - this.focusX) * this.tsz + this.w / 2),
+        //         y: Math.round((y - this.focusY) * this.tsz + this.h / 2),
+        //     };
+        // }
 
         /** Takes screen coordinates, returns world coordinates.
          * 
@@ -2517,7 +2517,7 @@ const {
         render(ctx, camera, t, pixel) {
             const { x, y } = camera.worldToScreen(this.x, this.y);
             const sprite = this.texturer(t, this);
-            const offsetX = (this.w * camera.tsz - sprite.w * pixel) / 2;
+            const offsetX = ((this.w * camera.tsz - sprite.w * pixel) / 2);
             const offsetY = this.h * camera.tsz - sprite.h * pixel;
             sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
 
