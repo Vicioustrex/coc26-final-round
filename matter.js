@@ -1468,10 +1468,17 @@ const {
          * @param {number} y 
          * @returns {{ x: number, y: number }}
          */
+        // worldToScreen(x, y) {
+        //     return {
+        //         x: (x - this.focusX) * this.tsz + this.w / 2,
+        //         y: (y - this.focusY) * this.tsz + this.h / 2,
+        //     };
+        // }
+
         worldToScreen(x, y) {
             return {
-                x: (x - this.focusX) * this.tsz + this.w / 2,
-                y: (y - this.focusY) * this.tsz + this.h / 2,
+                x: Math.round((x - this.focusX) * this.tsz + this.w / 2),
+                y: Math.round((y - this.focusY) * this.tsz + this.h / 2),
             };
         }
 
