@@ -860,15 +860,27 @@ const {
                     this._followPath(dt);
                 } 
                 else {  
+                    // const hDir = this._playerHDir();
+                    // if (hDir ===  1) this._moveRight = true;
+                    // if (hDir === -1) this._moveLeft = true;
+                    // this.facing = hDir || this.facing;
                     const hDir = this._playerHDir();
                     if (hDir ===  1) this._moveRight = true;
                     if (hDir === -1) this._moveLeft = true;
-                    this.facing = hDir || this.facing;
+                    const newFacing1 = hDir || this.facing;
+                    if (newFacing1 !== this.facing) { 
+                        this.facing = newFacing1; 
+                        this._facingLock = 0.2;
+                     }
+                    else this.facing = newFacing1;
                 }
             } else {
                 if (this.patrolDir === 1) this._moveRight = true;
                 else this._moveLeft  = true;
-                this.facing = this.patrolDir;
+                if (this.patrolDir !== this.facing) { 
+                    this.facing = this.patrolDir; 
+                    this._facingLock = 0.2; 
+                }
 
                 if (this.grounded && Math.abs(this.xv) < 0.15) {
                     this.stallTimer += dt;
@@ -978,7 +990,13 @@ const {
                 else this._moveLeft = true;
                 //only commit facing for real movement
                 if (Math.abs(dx) > 0.5) {          
-                    this.facing = dx > 0 ? 1 : -1;
+                    //this.facing = dx > 0 ? 1 : -1;
+                    //another new concept
+                    const newFacing = dx > 0 ? 1 : -1;
+                    if (newFacing !== this.facing) { 
+                        this.facing = newFacing; 
+                        this._facingLock = 0.2;
+                    }
                 }
             }
 
@@ -2393,7 +2411,7 @@ const {
             const spear = new MSpear(
                 this,
                 (dx / len) * spd,
-                (dy / len) * spd * 0.25
+                (dy / len) * spd * 0.75
             );
             this._spear = spear;
             this._spearActive = true;
@@ -2444,6 +2462,14 @@ const {
 
         ai(dt) {
             if (this.dead) return;
+
+            //lock facing briefly after any direction change to kill the flicker
+            if (this._facingLock > 0) {
+                this._facingLock -= dt;
+                this._moveLeft = this._moveRight = false;
+                this.state = 'idle';
+                return;
+            }
 
             if (this._retrieving && this._spear) {
                 const dx = (this._spear.x + this._spear.w / 2) - (this.x + this.w / 2);
@@ -2534,7 +2560,7 @@ const {
             const { x, y } = camera.worldToScreen(this.x, this.y);
             const sprite = this.texturer(t, this);
             const offsetX = ((this.w * camera.tsz - sprite.w * pixel) / 2);
-            const offsetY = this.h * camera.tsz - sprite.h * pixel;
+            const offsetY = this.h * camera.tsz - sprite.h * pixel + pixel*1;
             sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
 
             // hovering spear
@@ -2701,6 +2727,8 @@ const {
                     // => xv^4 = 1/4 g^2 Δx^2 / (1 + Δy^2 / Δx^2)
                     // => xv^4 = 1/4 g^2 Δx^4 / (Δx^2 + Δy^2)
                     // => xv = Δx (1/4 g^2 / (Δx^2 + Δy^2))^(1/4)
+
+                    //Arrow commenting here @Judges
 
                     const p = this.engine.player;
                     const g = this.engine.gravity;
