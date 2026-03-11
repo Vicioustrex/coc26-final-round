@@ -339,6 +339,11 @@ const {
                 this.transport();
             }
         }
+
+        remove() {
+            const idx = this.room?.entities.indexOf(this);
+            if (idx != null && idx !== -1) this.room.entities.splice(idx, 1);
+        }
     }
 
     class MBall extends MEntity {
@@ -813,6 +818,8 @@ const {
      *  flags set inside ai(dt), which are consumed each physics tick.
      */
     class MEnemy extends MEntity {
+        static deathAnimationTime = 1;
+
         /**
          * @param {number} x
          * @param {number} y
@@ -848,6 +855,9 @@ const {
             this.stallTimer = 0;
             this.jumpCooldown = 0;
             this.chaseMode  = false;
+
+            // death
+            this._deathTimer = 0;
         }
 
         /** Override in subclasses to implement AI behaviour.
@@ -1069,7 +1079,14 @@ const {
 
         /** @param {number} dt */
         tick(dt) {
-            if (this.dead) return;
+            if (this.dead) {
+                this._deathTimer += dt;
+                super.tick(dt, {}, { hvel: this.moveSpeed ?? 4 });
+                if (this._deathTimer > this.constructor.deathAnimationTime) {
+                    this.remove();
+                }
+                return;
+            }
 
             if (this.contactCooldown > 0) this.contactCooldown -= dt;
 
@@ -1126,16 +1143,18 @@ const {
         die() {
             if (this.dead) return;
             this.dead = true;
-            const room = this.room;
-            if (!room) return;
-            for (const z of room.indices) {
-                const arr = room.zia[z];
-                const idx = arr.indexOf(this);
-                if (idx !== -1) {
-                    arr.splice(idx, 1);
-                    break;
-                }
-            }
+            this._deathTimer = 0;
+        }
+
+        deathAlpha() {
+            ctx.globalAlpha = 1 - this._deathTimer / this.constructor._deathAnimationTime;
+        }
+
+        render(ctx, camera, t, pixel) {
+            ctx.save();
+            this.deathAlpha();
+            super.render(ctx, camera, t, pixel);
+            ctx.restore();
         }
     }
 
@@ -2318,7 +2337,7 @@ const {
                 this.stuckTimer += dt;
                 if (this.stuckTimer >= MSpear.STUCK_DURATION) {
                     this.owner?.onSpearDone?.();
-                    this._removeFromRoom();
+                    this.remove();
                 }
                 return;
             }
@@ -2326,7 +2345,7 @@ const {
             //count down then vanish
             if (this.stuck) {
                 this.stuckTimer += dt;
-                if (this.stuckTimer >= MSpear.STUCK_DURATION) this._removeFromRoom();
+                if (this.stuckTimer >= MSpear.STUCK_DURATION) this.remove();
                 return;
             }
 
@@ -2370,7 +2389,7 @@ const {
                     player.yv     = -8;
                     player.health = Math.max(0, player.health - MSpear.DAMAGE);
                     this._notifyOwner();
-                    this._removeFromRoom();
+                    this.remove();
                     return;
                 }
             }
@@ -2387,18 +2406,12 @@ const {
             this.owner?.onSpearStuck?.(this);
             this._updateTipHitbox();
         }
-        //minitaur (that is hard to spell honeyghost) is never notified twice
+
+        //minotaur (that is hard to spell honeyghost) is never notified twice
         _notifyOwner() {
             if (this._ownerNotified) return;
             this._ownerNotified = true;
             this.owner?.onSpearDone?.();
-        }
-
-        _removeFromRoom() {
-            if (this.dead) return;
-            this.dead = true;
-            const idx = this.room?.entities.indexOf(this);
-            if (idx != null && idx !== -1) this.room.entities.splice(idx, 1);
         }
     }
 
@@ -2520,7 +2533,7 @@ const {
             if (this._retrieving && this._spear) {
                 const dx = (this._spear.x + this._spear.w / 2) - (this.x + this.w / 2);
                 if (Math.abs(dx) < 0.8) {
-                    this._spear._removeFromRoom();
+                    this._spear.remove();
                     this.onSpearDone();
                 } else {
                     if (dx > 0) this._moveRight = true;
@@ -2608,11 +2621,14 @@ const {
         }
 
         render(ctx, camera, t, pixel) {
+            ctx.save();
+            this.deathAlpha();
             const { x, y } = camera.worldToScreen(this.x, this.y);
             const sprite = this.texturer(t, this);
             const offsetX = ((this.w * camera.tsz - sprite.w * pixel) / 2);
             const offsetY = this.h * camera.tsz - sprite.h * pixel + pixel*1.3;
             sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
+            ctx.restore();
 
             // hovering spear
             if (!this._spearActive && !this._throwing && !this._retrieving) {
@@ -2849,9 +2865,13 @@ const {
          * @returns {void}
          */
         render(ctx, camera, t, pixel) {
+            ctx.save();
+            this.deathAlpha();
+            window.console.log(ctx.globalAlpha, this._deathTimer)
             super.render(ctx, camera, t, pixel);
             if (this.ball?.room == this.room) 
                 this.ball?.render?.(ctx, camera, t, pixel);
+            ctx.restore();
         }
 
         /** Tick the game forward
