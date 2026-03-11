@@ -1533,10 +1533,17 @@ const {
         //         y: Math.round((y - this.focusY) * this.tsz + this.h / 2),
         //     };
         // }
+        // worldToScreen(x, y) {
+        //     return {
+        //         x: Math.floor((x - this.focusX) * this.tsz + this.w / 2),
+        //         y: Math.floor((y - this.focusY) * this.tsz + this.h / 2),
+        //     };
+        // }
         worldToScreen(x, y) {
+            const px = this.tsz / this.res;
             return {
-                x: Math.floor((x - this.focusX) * this.tsz + this.w / 2),
-                y: Math.floor((y - this.focusY) * this.tsz + this.h / 2),
+                x: Math.round(((x - this.focusX) * this.tsz + this.w / 2) / px) * px,
+                y: Math.round(((y - this.focusY) * this.tsz + this.h / 2) / px) * px,
             };
         }
 
