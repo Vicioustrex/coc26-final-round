@@ -227,7 +227,7 @@ const roomTemplates = {
             "#################",
         ],
         entities: {
-            '1': (x, y) => new MPowerPillar(x - 0.5, y - 1.8, "spike ball"),
+            '1': (x, y) => new MPowerPillar(x - 0.5, y - 1.8, "ball"),
         },
     },
     H: {
@@ -266,11 +266,12 @@ const roomTemplates = {
             "          @@@@##",
             "         @@@@@##",
             "  P     @@@@@@##",
-            "    C @@@@@@@@##",
+            "Y   C @@@@@@@@##",
             "##########@@@@##",
         ],
         entities: {
-            'C': (x, y) => new MCheckpoint(x, y - 3),
+            'C': (x, y) => new MCheckpoint(x, y - 3), 
+            'Y': (x, y) => new MMimic(x, y - 0.3),
         },
     },
     J: {
