@@ -3086,6 +3086,10 @@ const {
         tick(dt) {
             if (this.dead) {
                 this.stateTime += dt;
+                super.tick(dt, {}, { hvel: this.moveSpeed ?? 4 });
+                if (this._deathTimer > this.constructor.deathAnimationTime) {
+                    this.remove();
+                }
                 return;
             }
             if (this.contactCooldown > 0) this.contactCooldown -= dt;
