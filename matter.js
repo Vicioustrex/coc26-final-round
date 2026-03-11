@@ -1867,20 +1867,19 @@ const {
                 for (const row in assembly) {
                     for (const col in assembly[row]) {
                         if (assembly[row][col] == this.to) {
-                            room = this.engine.world.rooms[row][col]
+                            room = this.engine.world.rooms[row][col];
+                            break;
                         }
                     }
                 }
                 if (!room) throw "cannot find room";
                 p.room = room;
                 // find spawn point in room
-                for (const i in room.indices) {
-                    for (const j in room.zia[i]) {
-                        if (room.zia[i][j] instanceof MGauntletSpawnPoint) {
-                            const obj = room.zia[i][j];
-                            p.x = obj.x;
-                            p.y = obj.y;
-                        }
+                for (const e of room.entities) {
+                        if (e instanceof MGauntletSpawnPoint) {
+                        p.x = e.x;
+                        p.y = e.y;
+                        break;
                     }
                 }
             }
@@ -1896,7 +1895,7 @@ const {
             const { x: sx, y: sy } = camera.worldToScreen(this.x + 1, this.y - 0.3);
 
             //proximity prompt stuffs
-            if (this.inRange && this.dialogue.length > 0) {
+            if (this.inRange) {
                 this._prompt.style.left = `${sx}px`;
                 this._prompt.style.top = `${sy - 4}px`;
                 this._prompt.style.display = 'block';

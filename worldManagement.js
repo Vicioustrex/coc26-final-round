@@ -266,7 +266,7 @@ const roomTemplates = {
             "#         @@ @##",
             "          @@@@##",
             "         @@@@@##",
-            "  P     @@@@@@##",
+            "        @@@@@@##",
             "Y   C @@@@@@@@##",
             "##########@@@@##",
         ],
@@ -367,7 +367,7 @@ const roomTemplates = {
             "######################################",
         ],
         entities: {
-            'G': (x, y) => new MGauntletSpawnPoint(x, y), // DEFN
+            'G': (x, y) => new MGauntletSpawnPoint(x, y),
             'N': (x, y) => new MNPC(x + 0.2, y - 0.5, [
                 "Normally,",
                 "This room would be a gauntlet.",
