@@ -469,7 +469,8 @@
                     ctx.restore();
 
                     engine.renderer._skipRender = true;
-                    engine.tick(t, dt, {});
+                    //freeze physics an' preserve velocity
+                    engine.tick(t, 0, {});    
                     engine.renderer._skipRender = false;
                     roomTransition.tick(dt);
                 } else {
