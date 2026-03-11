@@ -10,7 +10,7 @@ const {
     MNPC, 
     MBlob, 
     MBreakWall,
-    MMinotaur,
+    MMinitaur,
     MMimic,
     MPowerPillar
  } = (() => {
@@ -2188,7 +2188,7 @@ const {
                 owner.x + (owner.facing === 1 ? owner.w : -w),
                 owner.y + owner.h * 0.2,
                 w, h, 1,
-                () => gfx.enemies.minotaur.spear
+                () => gfx.enemies.minitaur.spear
             );
 
             this.engine = owner.engine;
@@ -2206,7 +2206,7 @@ const {
 
         render(ctx, camera, t, pixel) {
             if (this.dead || !camera.inView(this)) return;
-            const sprite = gfx.enemies.minotaur.spear;
+            const sprite = gfx.enemies.minitaur.spear;
             const sw = sprite.w * pixel;
             const sh = sprite.h * pixel;
             //rotate around the hitbox center
@@ -2307,7 +2307,7 @@ const {
             this.owner?.onSpearStuck?.(this);
             this._updateTipHitbox();
         }
-        //minotaur (that is hard to spell honeyghost) is never notified twice
+        //minitaur (that is hard to spell honeyghost) is never notified twice
         _notifyOwner() {
             if (this._ownerNotified) return;
             this._ownerNotified = true;
@@ -2322,8 +2322,8 @@ const {
         }
     }
 
-    /** MMinotaur: spear-throwing enemy. Patrols, aggros on sight, winds up and throws <3 */
-    class MMinotaur extends MEnemy {
+    /** MMinitaur: spear-throwing enemy. Patrols, aggros on sight, winds up and throws <3 */
+    class MMinitaur extends MEnemy {
         static THROW_RANGE= 14;
         static THROW_WINDUP= 0.55;
         static THROW_COOLDOWN= 2.8;
@@ -2337,11 +2337,11 @@ const {
 
         constructor(x, y) {
             super(x, y, 1.0, 1.4, 60, (t, self) => {
-                const frames = gfx.enemies.minotaur[self.state]
-                            ?? gfx.enemies.minotaur.idle;
+                const frames = gfx.enemies.minitaur[self.state]
+                            ?? gfx.enemies.minitaur.idle;
                 //single SpriteRef
                 if (!Array.isArray(frames)) return frames;
-                const fps = MMinotaur.ANIM_FPS[self.state] ?? 4;
+                const fps = MMinitaur.ANIM_FPS[self.state] ?? 4;
                 return frames[Math.floor(t * fps) % frames.length];
             });
 
@@ -2362,7 +2362,7 @@ const {
         /** Called by MSpear once it has either stuck or hit the player. */
         onSpearDone() {
             this._spearActive = false;
-            this._throwCooldown = MMinotaur.THROW_COOLDOWN;
+            this._throwCooldown = MMinitaur.THROW_COOLDOWN;
         }
 
         _launchSpear() {
@@ -2372,7 +2372,7 @@ const {
             const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
             const dy = (player.y + player.h / 2) - (this.y + this.h / 2);
             const len = Math.sqrt(dx * dx + dy * dy) || 1;
-            const spd = MMinotaur.THROW_SPEED;
+            const spd = MMinitaur.THROW_SPEED;
 
             const spear = new MSpear(
                 this,
@@ -2393,7 +2393,7 @@ const {
             this._spearActive = false;
             this._retrieving = false;
             this._spear = null;
-            this._throwCooldown = MMinotaur.THROW_COOLDOWN;
+            this._throwCooldown = MMinitaur.THROW_COOLDOWN;
         }
 
         _hasLOS() {
@@ -2404,7 +2404,7 @@ const {
             const tileMap = this.engine?.world?.tileMap;
             if (!bitmap || !tileMap) return false;
 
-            //ray from minotaur center to player center
+            //ray from minitaur center to player center
             let x = Math.round(this.x + this.w / 2);
             let y = Math.round(this.y + this.h / 2);
             const x1 = Math.round(player.x + player.w / 2);
@@ -2460,7 +2460,7 @@ const {
                 this._windupTimer += dt;
                 this.facing = this._playerHDir() || this.facing;
                 this.state = 'idle';
-                if (this._windupTimer >= MMinotaur.THROW_WINDUP) {
+                if (this._windupTimer >= MMinitaur.THROW_WINDUP) {
                     this._throwing = false;
                     this._windupTimer = 0;
                     this._launchSpear();
@@ -2474,7 +2474,7 @@ const {
                 && !this._spearActive
                 && this._throwCooldown <= 0
                 && this.grounded
-                && dist <= MMinotaur.THROW_RANGE) {
+                && dist <= MMinitaur.THROW_RANGE) {
                 this._throwing = true;
                 this._windupTimer = 0;
                 return;
@@ -2523,7 +2523,7 @@ const {
 
             // hovering spear
             if (!this._spearActive && !this._throwing && !this._retrieving) {
-                const spearSprite = gfx.enemies.minotaur.spear;
+                const spearSprite = gfx.enemies.minitaur.spear;
                 const { x: sx, y: sy } = camera.worldToScreen(
                     this.x + this.w / 2 + this.facing * 0.9,
                     this.y + this.h * 0.4
@@ -2960,7 +2960,7 @@ const {
         MNPC, 
         MBlob, 
         MBreakWall,
-        MMinotaur,
+        MMinitaur,
         MMimic,
         MPowerPillar,
     };

@@ -28,7 +28,7 @@ const roomTemplates = {
         ],  
         entities: {
             'Y': (x, y) => new MMimic(x, y - 0.3), // why is this Y? ftlogidk
-            'M': (x, y) => new MMinotaur(x, y - 0.3),
+            'M': (x, y) => new MMinitaur(x, y - 0.3),
             'E': (x, y) => new MBlob(x, y, 'g2'),
             'e': (x, y) => new MBlob(x, y, 'g1'),
             'C': (x, y) => new MCheckpoint(x, y - 3),
@@ -180,7 +180,7 @@ const roomTemplates = {
         ],
         entities: {
             'C': (x, y) => new MCheckpoint(x, y - 3),
-            'M': (x, y) => new MMinotaur(x, y),
+            'M': (x, y) => new MMinitaur(x, y),
         },
     },
     F: {
@@ -203,7 +203,7 @@ const roomTemplates = {
             "############################################",
         ],
         entities: {
-            'M': (x, y) => new MMinotaur(x, y),
+            'M': (x, y) => new MMinitaur(x, y),
         },
     },
     G: {
@@ -254,7 +254,7 @@ const roomTemplates = {
             
         ],
         entities: {
-            'M': (x, y) => new MMinotaur(x, y),
+            'M': (x, y) => new MMinitaur(x, y),
         },
     },
     I: {
