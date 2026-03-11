@@ -395,6 +395,197 @@
             }
         }
 
+        //px per tile
+        const MM_CELL = 3; 
+        //px gap between rooms  
+        const MM_GAP = 3;
+
+        //canvas display width an height
+        const MM_VIEW_W = 180; 
+        const MM_VIEW_H = 140;
+
+        //CSS junk
+        const minimapCanvas = document.createElement('canvas');
+        minimapCanvas.id = 'minimap';
+        minimapCanvas.style.width  = MM_VIEW_W + 'px';
+        minimapCanvas.style.height = MM_VIEW_H + 'px';
+        minimapCanvas.removeAttribute('width');
+        minimapCanvas.removeAttribute('height');
+        document.getElementById('overlay').appendChild(minimapCanvas);
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        const minimapLabel = document.createElement('div');
+        minimapLabel.id = 'minimap-label';
+        document.getElementById('overlay').appendChild(minimapLabel);
+
+        //fix the canvas backing store to match display size
+        minimapCanvas.width  = MM_VIEW_W;
+        minimapCanvas.height = MM_VIEW_H;
+
+        //pan offset (user drag, pixels in world-map space)
+        let mmPan = { 
+            x: 0, 
+            y: 0 
+        };
+        let mmDragging = false, mmDragStartX = 0, mmDragStartY = 0, mmPanStart = { 
+            x: 0, 
+            y: 0 
+        };
+
+        minimapCanvas.addEventListener('mousedown', e => {
+            mmDragging = true;
+            mmDragStartX = e.clientX;
+            mmDragStartY = e.clientY;
+            mmPanStart = { ...mmPan };
+            minimapCanvas.classList.add('dragging');
+            e.stopPropagation();
+        });
+        window.addEventListener('mousemove', e => {
+            if (!mmDragging) return;
+            mmPan.x = mmPanStart.x + (e.clientX - mmDragStartX);
+            mmPan.y = mmPanStart.y + (e.clientY - mmDragStartY);
+        });
+        window.addEventListener('mouseup', () => {
+            mmDragging = false;
+            minimapCanvas.classList.remove('dragging');
+        });
+
+        const MM_TILE_COLORS = {
+            '#': '#7a8a9a', '@': '#2e3d4a',
+            'B': '#5a6a7a', 'b': '#2a3844',
+            '^': '#6a7a5a', '=': '#5a5a8a',
+        };
+
+        function renderMinimap() {
+            const player = engine.player;
+            const rooms = engine.world.rooms;
+            const nRows = rooms.length;
+            if (!nRows || !player) return;
+
+            //build grid dimensions only from non-empty cells
+            const nCols = Math.max(...rooms.map(r => r.length));
+
+            const colW = Array.from({ length: nCols }, (_, ci) =>Math.max(0, ...rooms.map(row => row[ci]?.width  ?? 0)));
+            const rowH = Array.from({ length: nRows }, (_, ri) =>
+                Math.max(0, ...rooms[ri].map(rm => rm?.height ?? 0)));
+
+            //only add gap where both neighbours have content 
+            const colX = [];
+            let cx = 0;
+            for (let ci = 0; ci < nCols; ci++) {
+                colX[ci] = cx;
+                if (colW[ci] > 0) cx += colW[ci] * MM_CELL + MM_GAP;
+            }
+
+            const rowY = [];
+            let cy = 0;
+            for (let ri = 0; ri < nRows; ri++) {
+                rowY[ri] = cy;
+                if (rowH[ri] > 0) cy += rowH[ri] * MM_CELL + MM_GAP;
+            }
+
+            //find active room's grid position by scanning (don't rely on room.row/col)
+            let activeRi = 0, activeCi = 0;
+            outer: for (let ri = 0; ri < nRows; ri++) {
+                for (let ci = 0; ci < (rooms[ri]?.length ?? 0); ci++) {
+                    if (rooms[ri][ci] === player.room) {
+                        activeRi = ri; activeCi = ci;
+                        break outer;
+                    }
+                }
+            }
+
+            const pr = player.room;
+            const followX = colX[activeCi] + ((pr?.width  ?? 0) * MM_CELL) / 2;
+            const followY = rowY[activeRi] + ((pr?.height ?? 0) * MM_CELL) / 2;
+            const camX = followX - MM_VIEW_W / 2 - mmPan.x;
+            const camY = followY - MM_VIEW_H / 2 - mmPan.y;
+
+            minimapCtx.clearRect(0, 0, MM_VIEW_W, MM_VIEW_H);
+            minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            minimapCtx.fillRect(0, 0, MM_VIEW_W, MM_VIEW_H);
+
+            const dot = (ox, oy, wx, wy, color) => {
+                minimapCtx.fillStyle = color;
+                minimapCtx.fillRect(
+                    ox + Math.round(wx * MM_CELL),
+                    oy + Math.round(wy * MM_CELL),
+                    MM_CELL, MM_CELL
+                );
+            };
+
+            for (let ri = 0; ri < nRows; ri++) {
+                for (let ci = 0; ci < (rooms[ri]?.length ?? 0); ci++) {
+                    const room = rooms[ri][ci];
+                    if (!room?.bitmap) continue;
+
+                    const ox = colX[ci] - camX;
+                    const oy = rowY[ri] - camY;
+                    const isActive = room === pr;
+
+                    minimapCtx.globalAlpha = isActive ? 1.0 : 0.4;
+
+                    for (let r = 0; r < room.bitmap.length; r++) {
+                        const line = room.bitmap[r];
+                        for (let c = 0; c < line.length; c++) {
+                            const color = MM_TILE_COLORS[line[c]];
+                            if (!color) continue;
+                            minimapCtx.fillStyle = color;
+                            minimapCtx.fillRect(ox + c * MM_CELL, oy + r * MM_CELL, MM_CELL - 1, MM_CELL - 1);
+                        }
+                    }
+
+                    minimapCtx.globalAlpha = 1;
+
+                    if (isActive) {
+                        minimapCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        minimapCtx.lineWidth = 1;
+                        minimapCtx.strokeRect(ox - 1, oy - 1, room.width * MM_CELL + 2, room.height * MM_CELL + 2);
+
+                        for (const ent of room.entities) {
+                            if (ent instanceof MPlayer) continue;
+                            if (ent instanceof MCheckpoint){ 
+                                dot(ox, oy, ent.x, ent.y, '#00e5ff'); 
+                                continue; 
+                            }
+                            if (ent instanceof MNPC) { 
+                                dot(ox, oy, ent.x, ent.y, '#ffe033'); 
+                                continue; 
+                            }
+                            if (ent instanceof MBreakWall) { 
+                                dot(ox, oy, ent.x, ent.y, '#ff8800'); 
+                                continue; 
+                            }
+                            if (ent instanceof MPowerPillar) { 
+                                dot(ox, oy, ent.x, ent.y, '#cc88ff'); 
+                                continue; 
+                            }
+                            if (ent instanceof MEnemy) { 
+                                dot(ox, oy, ent.x + ent.w/2 - 0.5, ent.y + ent.h/2 - 0.5, ent.dead ? '#333' : '#ff3333'); 
+                                continue; 
+                            }
+                        }
+                        const ball = player.ball;
+                        if (ball?.room === room) dot(ox, oy, ball.x, ball.y, '#fff');
+                        dot(ox, oy, player.x, player.y, '#33ff66');
+                    }
+
+                    const key = (worldAssembly[ri]?.[ci] ?? '').trim();
+                    if (key) {
+                        minimapCtx.globalAlpha = isActive ? 0.85 : 0.25;
+                        minimapCtx.fillStyle = '#fff';
+                        minimapCtx.font = `${MM_CELL * 2}px monospace`;
+                        minimapCtx.fillText(key, ox + 1, oy + MM_CELL * 2);
+                        minimapCtx.globalAlpha = 1;
+                    }
+                }
+            }
+
+            const key = worldAssembly[activeRi]?.[activeCi] ?? '?';
+            minimapLabel.textContent =  `[${key}] r${activeRi}c${activeCi}  x:${player.x.toFixed(1)} y:${player.y.toFixed(1)}`;
+        }
+
+
         let lastTime = performance.now();
         let firstTime = performance.now();
         let frameCount = 0, dtMs, dt, tMs, t, fps;
@@ -508,6 +699,9 @@
                 }
 
                 renderHUD(ctx, engine.player, engine.renderer.basePixel);
+
+                //minimap
+                renderMinimap();
 
                 //ctx.restore();
                 frameCount++;
