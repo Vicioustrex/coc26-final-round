@@ -305,16 +305,14 @@
         
         const roomTransition = new RoomTransition();
         engine.onRoomChange = (dir) => {
-            //boost player when going up
-            if(dir === 'top' && engine.player.vy > -2) engine.player.vy = -3;
-
+            if(dir === 'top') engine._pendingUpBoost = true;
             if (roomTransition.active) return;
             roomTransition.capture(canvas, engine);
             roomTransition.start(dir);
         };
 
         /** HUD
-         *
+         *  
          * @param {CanvasRenderingContext2D} ctx
          * @param {MPlayer}  player
          * @param {number}   pixel - engine.renderer.pixel
@@ -686,6 +684,10 @@
 
                     ctx.restore();
                     roomTransition.tick(dt);
+                    if (!roomTransition.active && engine._pendingUpBoost) {
+                        engine._pendingUpBoost = false;
+                        engine.player.yv = -engine.jump;
+                    }
                 }
 
 
