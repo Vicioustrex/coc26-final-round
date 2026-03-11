@@ -623,6 +623,9 @@
                 ctx.fillStyle = "rgb(20, 10, 10)";
                 ctx.fillRect(0, 0, width, height);
                 
+                //chrome be tripping yall
+                ctx.imageSmoothingEnabled = false;
+
                 //transistion delay for room swap
                 /*world._transitionCooldown = Math.max(0, world._transitionCooldown - dt);
                 world.execute(engine.player);

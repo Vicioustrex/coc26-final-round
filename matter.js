@@ -1439,12 +1439,25 @@ const {
          * @param {number} y 
          * @returns {void}
          */
+        // focus(x, y) {
+        //     this.focusX = x;
+        //     this.focusY = y;
+        //     this.viewBox.setWH(
+        //         this.focusX - this.w / this.tsz / 2,
+        //         this.focusY - this.h / this.tsz / 2,
+        //         this.w / this.tsz, this.h / this.tsz
+        //     );
+        // }
+
         focus(x, y) {
             this.focusX = x;
             this.focusY = y;
+            //snap to pixel grid
+            const snappedFX = Math.floor(x * this.tsz) / this.tsz;
+            const snappedFY = Math.floor(y * this.tsz) / this.tsz;
             this.viewBox.setWH(
-                this.focusX - this.w / this.tsz / 2,
-                this.focusY - this.h / this.tsz / 2,
+                snappedFX - this.w / this.tsz / 2,
+                snappedFY - this.h / this.tsz / 2,
                 this.w / this.tsz, this.h / this.tsz
             );
         }
@@ -1514,10 +1527,16 @@ const {
         //     };
         // }
 
+        // worldToScreen(x, y) {
+        //     return {
+        //         x: Math.round((x - this.focusX) * this.tsz + this.w / 2),
+        //         y: Math.round((y - this.focusY) * this.tsz + this.h / 2),
+        //     };
+        // }
         worldToScreen(x, y) {
             return {
-                x: Math.round((x - this.focusX) * this.tsz + this.w / 2),
-                y: Math.round((y - this.focusY) * this.tsz + this.h / 2),
+                x: Math.floor((x - this.focusX) * this.tsz + this.w / 2),
+                y: Math.floor((y - this.focusY) * this.tsz + this.h / 2),
             };
         }
 
