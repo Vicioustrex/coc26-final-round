@@ -208,6 +208,7 @@
         
 
         engine.createPlayer(5, 5, 0.80, 1.4, (t, player) => { 
+            if (player._hitFlash > 0) return gfx.player.hurt[0];
             const state = player.state ?? 'idle';
             const carryMap = { idle: 'carryidle', run: 'carryrun', jump: 'carryjump', fall: 'carryfall' };
             const holding = player.ball && (player.engine.slowMo || player.dragging || player.carrying);

@@ -498,6 +498,12 @@ const {
                 groundPound: false,
                 fullTeleport: false,
             };
+            this._hitFlash = 0;
+        }
+
+        takeDamage(amount) {
+            this.health = Math.max(0, this.health - amount);
+            this._hitFlash = 0.18;
         }
 
         _separateFromEnemies() {
@@ -604,6 +610,7 @@ const {
                 : events;
 
             super.tick(dt, physEvents);
+            if (this._hitFlash > 0) this._hitFlash -= dt;
             if (!this._groundedOnEnemy) {
                 this._standingOnEnemy = null;
                 this._standingOnEnemyTimer = 0;
@@ -857,6 +864,7 @@ const {
 
             // death
             this._deathTimer = 0;
+            this._hitFlash = 0;
         }
 
         /** Override in subclasses to implement AI behaviour.
@@ -1088,6 +1096,7 @@ const {
             }
 
             if (this.contactCooldown > 0) this.contactCooldown -= dt;
+            if (this._hitFlash > 0) this._hitFlash -= dt;
 
             this.stateTime += dt;
             this.ai(dt);
@@ -1130,11 +1139,12 @@ const {
             const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 15;
             player.yv = -10;
-            player.health = Math.max(0, player.health - 34);
+            player.takeDamage(34);
         }
 
         /** @param {number} amount */
         takeDamage(amount) {
+            this._hitFlash = 0.12;
             this.health -= amount;
             if (this.health <= 0) this.die();
         }
@@ -2230,6 +2240,7 @@ const {
             const hp = big ? 90: 30;
 
             super(x, y, w, h, hp, (t, self) => {
+                if (self._hitFlash > 0) return sprites.hurt;
                 const fps= self.state === 'jump' ? 10 : 4;
                 const frames = sprites[self.state] ?? sprites.idle;
                 const frame  = Math.floor(t * fps) % frames.length;
@@ -2494,9 +2505,9 @@ const {
                 player.updateHitbox();
                 if (this.hbox.collision(player.hbox)) {
                     const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
-                    player.xv     = Math.sign(dx || Math.sign(this.xv)) * 12;
-                    player.yv     = -8;
-                    player.health = Math.max(0, player.health - MSpear.DAMAGE);
+                    player.xv = Math.sign(dx || Math.sign(this.xv)) * 12;
+                    player.yv = -8;
+                    player.takeDamage(MSpear.DAMAGE);
                     this._notifyOwner();
                     this.remove();
                     return;
@@ -2539,6 +2550,7 @@ const {
 
         constructor(x, y) {
             super(x, y, 1.0, 1.4, 60, (t, self) => {
+                if (self._hitFlash > 0) return gfx.enemies.minitaur.hurt;
                 const frames = gfx.enemies.minitaur[self.state]
                             ?? gfx.enemies.minitaur.idle;
                 //single SpriteRef
@@ -2770,6 +2782,7 @@ const {
             const sprites = gfx.enemies.mimic;
 
             super(x, y, 0.97, 1.4, 100, (t, self) => {
+                if (self._hitFlash > 0) return gfx.enemies.mimic.hurt;
                 const state = self.state ?? 'idle';
                 const carryMap = { idle: 'carryidle', run: 'carryrun', jump: 'carryjump', fall: 'carryfall' };
                 const holding = self.ball && (self.engine.slowMo || self.dragging || self.carrying);
@@ -3103,6 +3116,7 @@ const {
  
         constructor(x, y, powerType) {
             super(x, y, 2, 3, (t, self) => {
+                
                 if (self.collected) return gfx.props.misc.pwrtwroff;
                 const frames = gfx.props.misc.pwrtwron;
                 return frames[Math.floor(t * MPowerPillar.ANIM_FPS) % frames.length];
@@ -3175,6 +3189,7 @@ const {
     class MSwarmerUnit extends MEnemy {
         constructor(x, y, controller) {
             super(x, y, 0.45, 0.45, 15, (t, self) => {
+                if (self._hitFlash > 0) return gfx.enemies.wingShroom.hit;
                 if (self.dead) {
                     const frames = gfx.enemies.wingShroom.die;
                     return frames[Math.min(Math.floor(self.stateTime * 8), frames.length - 1)];
@@ -3278,7 +3293,7 @@ const {
             const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 5;
             player.yv = -3;
-            player.health = Math.max(0, player.health - 8);
+            player.takeDamage(8);
         }
     }
 
@@ -3338,6 +3353,7 @@ const {
     class MFlyer extends MEnemy {
         constructor(x, y) {
             super(x, y, 0.9, 0.9, 40, (t, self) => {
+                if (self._hitFlash > 0) return gfx.enemies.wingShroom.hit;
                 if (self.dead) {
                     const frames = gfx.enemies.wingShroom.die;
                     return frames[Math.min(Math.floor(self.stateTime * 8), frames.length - 1)];
@@ -3423,7 +3439,7 @@ const {
             const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 8;
             player.yv = -5;
-            player.health = Math.max(0, player.health - 12);
+            player.takeDamage(12);
         }
     }
 
@@ -3565,7 +3581,7 @@ const {
             const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 5;
             player.yv = -14;
-            player.health = Math.max(0, player.health - 25);
+            player.takeDamage(25);
         }
     }
 
