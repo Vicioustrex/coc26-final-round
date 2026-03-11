@@ -6050,24 +6050,42 @@ class SpriteRef {
      * @param {number} pixel - pixel size
      * @returns {void}
      */
-    draw(ctx, x, y, pixel, flip = 1) {
-        // this.x, etc is source coordinates
-        // x, y, etc is destination coordinates
-        ctx.save();
-        ctx.imageSmoothingEnabled = false;
-        if (flip === -1) {
-            //mirror around the sprite's center
-            ctx.translate(x + this.w * pixel, 0);
-            ctx.scale(-1, 1);
-            x = 0;
-        }
-        ctx.drawImage(
-            this.spritesheet,
-            this.x, this.y, this.w, this.h,
-            x, y, this.w * pixel, this.h * pixel
-        );
-        ctx.restore();
-    }
+    // draw(ctx, x, y, pixel, flip = 1) {
+    //     // this.x, etc is source coordinates
+    //     // x, y, etc is destination coordinates
+    //     ctx.save();
+    //     ctx.imageSmoothingEnabled = false;
+    //     if (flip === -1) {
+    //         //mirror around the sprite's center
+    //         ctx.translate(x + this.w * pixel, 0);
+    //         ctx.scale(-1, 1);
+    //         x = 0;
+    //     }
+    //     ctx.drawImage(
+    //         this.spritesheet,
+    //         this.x, this.y, this.w, this.h,
+    //         x, y, this.w * pixel, this.h * pixel
+    //     );
+    //     ctx.restore();
+    // }
+
+	//trying to fix the lines
+	draw(ctx, x, y, pixel, flip = 1) {
+		ctx.save();
+		ctx.imageSmoothingEnabled = false;
+		if (flip === -1) {
+			ctx.translate(Math.floor(x + this.w * pixel), 0);
+			ctx.scale(-1, 1);
+			x = 0;
+		}
+		ctx.drawImage(
+			this.spritesheet,
+			this.x, this.y, this.w, this.h,
+			Math.floor(x), Math.floor(y),
+			Math.ceil(this.w * pixel), Math.ceil(this.h * pixel)
+		);
+		ctx.restore();
+	}
 }
 
 /** Spritesheet, containing all sprites. 
