@@ -6430,3 +6430,5 @@ gfx.player.groundpoundimpact = {
     2: gfx.player.groundpound[3],
     3: gfx.player.groundpound[4],
 };
+
+gfx.empty = new SpriteRef(spritesheet.canvas, 0, 0, 0, 0);

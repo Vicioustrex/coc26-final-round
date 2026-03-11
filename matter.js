@@ -7,6 +7,8 @@ const {
     MEnemy, 
     MEngine, 
     MCheckpoint, 
+    MGauntletEntryPoint,
+    MGauntletSpawnPoint,
     MNPC, 
     MBlob, 
     MBreakWall,
@@ -480,8 +482,6 @@ const {
             this.groundPounding = false;
             this.groundPoundTime = 0; 
             this.impactTime = null;
-            this.prevKeyS = false;
-            this.prevMouse = false;
             this.dragging = false;
             this.carrying = false;
             this.dragInitX = 0;
@@ -581,12 +581,13 @@ const {
          * 
          * @param {number} dt 
          * @param {Object} events
+         * @param {Object} eventsPrev
          * @returns {void}
          */ 
-        tick(dt, events) {
+        tick(dt, events, eventsPrev) {
             //const canGroundPound = !this.grounded && !this.groundPounding && (this.airTime ?? 0) > 0.1;
             const canGroundPound = this.powers.groundPound && !this.grounded && !this.groundPounding && (this.airTime ?? 0) > 0.1;
-            const keySJustPressed = events.KeyS && !this.prevKeyS;
+            const keySJustPressed = events.KeyS && !eventsPrev.KeyS;
 
             if (canGroundPound && keySJustPressed) {
                 this.groundPounding = true;
@@ -594,8 +595,6 @@ const {
                 this.impactTime = null;
                 this.yv = this.engine.jump * this.engine.groundPoundMult;
             }
-
-            this.prevKeyS = events.KeyS;
 
             if (this.groundPounding) this.groundPoundTime += dt;
             if (this.impactTime !== null) this.impactTime += dt;
@@ -617,7 +616,7 @@ const {
             if (!this.carrying) this.ball?.tick?.(dt, {}, { friction: 1 });
 
             //if (events.Mouse && !this.prevMouse && !this.ball) {
-            if (events.Mouse && !this.prevMouse && (!this.ball || this.carrying) && this.powers.ball) {
+            if (events.Mouse && !eventsPrev.Mouse && (!this.ball || this.carrying) && this.powers.ball) {
                 this.dragging = true;
                 this.dragInitX = events.MouseX;
                 this.dragInitY = events.MouseY;
@@ -652,7 +651,7 @@ const {
                         dy / tsz * MPlayer.throwFactor,
                     );
                 }
-            } else if (events.Mouse && !this.prevMouse && this.ball && !this.carrying) {
+            } else if (events.Mouse && !eventsPrev.Mouse && this.ball && !this.carrying) {
                 const canTeleport = this.powers.fullTeleport ||
                        (this.powers.groundedTeleport && this.ball.onGround);
                 if (canTeleport) {
@@ -770,7 +769,6 @@ const {
             }
 
             this._wasGrounded = this.grounded;
-            this.prevMouse = events.Mouse;
         }
 
         /** Renders the thing
@@ -1188,7 +1186,7 @@ const {
         init(roomData, worldAssembly, tileMap, globalEntityMap = {}) {
             this.roomData = roomData;
             this.assembly = worldAssembly;
-            this.tileMap= tileMap;
+            this.tileMap = tileMap;
 
             for (const row in worldAssembly) {
                 this.rooms.push([]);
@@ -1199,9 +1197,9 @@ const {
                         entities: [],
                         loaded: false,
                         width: 0,
-                        height:0,
-                        row:parseFloat(row),
-                        col:parseFloat(col),
+                        height: 0,
+                        row: parseFloat(row),
+                        col: parseFloat(col),
                     });
 
                     const room = this.rooms[row][col];
@@ -1737,12 +1735,13 @@ const {
             //for the slowmo effect with the ball
             if (this.slowMo) dt *= this.slowMoScale;
             this.events = events;
+            this.eventsPrev = eventsPrev;
             this.lastDt = dt;
             //for transistions 
             if (!this.renderer._skipRender) this.renderer.render(t);
 
             //this.renderer.render(t);
-            this.player.tick(dt, events);
+            this.player.tick(dt, events, eventsPrev);
             if (this.player.health <= 0) {
                 this.player.x = this.player.sx;
                 this.player.y = this.player.sy;
@@ -1824,6 +1823,118 @@ const {
         }
     }
 
+    class MGauntletEntryPoint extends MDecorative {
+        static OPEN_BUBBLE_RADIUS = 4;/*
+        static ANIM_FPS = 3;
+        static DEBUG_RADIUS = false;*/
+
+        constructor(x, y, to) {
+            super(x, y, 1, 1, (t, self) => gfx.props.environment.tongue[1]);
+
+            this.to = to;
+            this.inRange = false;
+
+            //html junk ask arrow
+            const overlay = document.getElementById('overlay');
+
+            this._prompt = document.createElement('div');
+            this._prompt.className = 'npc-prompt';
+            this._prompt.textContent = 'SPACE to enter';
+            this._prompt.style.display = 'none';
+            overlay.appendChild(this._prompt);
+        }
+
+        tick(dt) {
+            const player = this.engine?.player;
+            if (!player) return;
+
+            const { events, eventsPrev } = this.engine;
+            const spaceNow = !!events.Space;
+            const spaceJust = spaceNow && !eventsPrev.Space;
+
+            //proximity check
+            const cx = this.x + 1, cy = this.y + 1.5;
+            const px = player.x + player.w / 2, py = player.y + player.h / 2;
+            const dist = Math.hypot(px - cx, py - cy);
+            this.inRange = dist <= MNPC.TALK_RADIUS && this.room === player.room;
+
+            //advance n' open n' close on space
+            if (this.inRange && spaceJust) {
+                const p = this.engine.player;
+                const assembly = this.engine.world.assembly;
+                // find room in assembly
+                let room;
+                for (const row in assembly) {
+                    for (const col in assembly[row]) {
+                        if (assembly[row][col] == this.to) {
+                            room = this.engine.world.rooms[row][col]
+                        }
+                    }
+                }
+                if (!room) throw "cannot find room";
+                p.room = room;
+                // find spawn point in room
+                for (const i in room.indices) {
+                    for (const j in room.zia[i]) {
+                        if (room.zia[i][j] instanceof MGauntletSpawnPoint) {
+                            const obj = room.zia[i][j];
+                            p.x = obj.x;
+                            p.y = obj.y;
+                        }
+                    }
+                }
+            }
+
+            this._syncHTML();
+        }
+
+        _syncHTML() {
+            if (!this.engine?.renderer) return;
+            const camera = this.engine.renderer.camera;
+
+            //pos element above the thing's head
+            const { x: sx, y: sy } = camera.worldToScreen(this.x + 1, this.y - 0.3);
+
+            //proximity prompt stuffs
+            if (this.inRange && this.dialogue.length > 0) {
+                this._prompt.style.left = `${sx}px`;
+                this._prompt.style.top = `${sy - 4}px`;
+                this._prompt.style.display = 'block';
+            } else {
+                this._prompt.style.display = 'none';
+            }
+        }
+
+        render(ctx, camera, t, pixel) {
+            super.render(ctx, camera, t, pixel);
+
+            //for debug stuffs
+            // if (MNPC.DEBUG_RADIUS) {
+            //     const { x, y } = camera.worldToScreen(this.x + 1, this.y + 1.5);
+            //     ctx.save();
+            //     ctx.strokeStyle = 'rgba(255, 0,0,0.7)';
+            //     ctx.lineWidth = 2;
+            //     //I will forever use this (found out about it last month)
+            //     ctx.setLineDash([4, 4]);
+            //     ctx.beginPath();
+            //     ctx.arc(x, y, MNPC.TALK_RADIUS * camera.tsz, 0, Math.PI * 2);
+            //     ctx.stroke();
+            //     ctx.restore();
+            // }
+        }
+
+        //call this when room is bye bye so we don't get 10 missed calls from the DOM
+        destroy() {
+            this._prompt?.remove();
+        }
+    }
+
+    class MGauntletSpawnPoint extends MDecorative {
+        constructor(x, y) {
+            super(x, y, 1, 1, (t, self) => gfx.empty);
+        }
+    }
+
     class MNPC extends MDecorative {
         static TALK_RADIUS = 4;
         static ANIM_FPS = 3;
@@ -1845,7 +1956,6 @@ const {
             this.dialogue = dialogue;
             this.dialogueIndex = -1;
             this.inRange = false;
-            this._prevSpace = false;
 
             //html junk ask arrow
             const overlay = document.getElementById('overlay');
@@ -1866,10 +1976,9 @@ const {
             const player = this.engine?.player;
             if (!player) return;
 
-            const events = this.engine.events ?? {};
+            const { events, eventsPrev } = this.engine;
             const spaceNow = !!events.Space;
-            const spaceJust = spaceNow && !this._prevSpace;
-            this._prevSpace = spaceNow;
+            const spaceJust = spaceNow && !eventsPrev.Space;
 
             //proximity check
             const cx = this.x + 1, cy = this.y + 1.5;
@@ -3470,6 +3579,8 @@ const {
         MEnemy, 
         MEngine, 
         MCheckpoint, 
+        MGauntletEntryPoint,
+        MGauntletSpawnPoint,
         MNPC, 
         MBlob, 
         MBreakWall,
