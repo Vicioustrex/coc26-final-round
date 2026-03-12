@@ -1,50 +1,52 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
     <head>
         <!--Encoding and viewport-->
-	    <meta charset="utf-8">
-	    <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <!--Import google font: Exo -->
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Exo">
-        <link rel='stylesheet' href='https://fonts.googleapis.com/css2?family=Lato&family=Material+Icons&display=swap'>
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css?family=Exo"
+        />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Lato&family=Material+Icons&display=swap"
+        />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
         <!--The page title-->
         <title>New webpage</title>
         <!--CSS Styling-->
         <link rel="stylesheet" href="style.css" />
     </head>
-    <body>  
+    <body>
         <!--The container for the entire thing-->
-        <div id="container"> 
+        <div id="container">
             <div id="game-wrapper">
-                <canvas id = "game"></canvas> 
+                <canvas id="game"></canvas>
             </div>
             <div id="overlay">
                 <div id="fullscreen-container">
-                    <span class='material-icons' id='fullscreen'>fullscreen</span>
+                    <span class="material-icons" id="fullscreen"
+                        >fullscreen</span
+                    >
                 </div>
                 <p id="console"></p>
             </div>
         </div>
     </body>
-    <script type src="utils.js"></script>    
+    <script type src="utils.js"></script>
     <script type src="canvas.js"></script>
-    <script type src="cgraphics.js"></script>
-    <script type src="console.js"></script>
+    <!--<script type src="console.js"></script>-->
     <script type src="pixart.js"></script>
     <script type src="matter.js"></script>
-    <script type src="vector.js"></script>
-    <script type src="particles.js"></script>
     <script type src="userinput.js"></script>
     <script type src="worldManagement.js"></script>
-    <script type src="pathfinding.js"></script>
-    <script type src="enemies.js"></script>
+
     <!-- screw all the code i couldnt understand, i will completely redo it -->
     <script type>
         const engine = MEngine.create({});
         engine.setRenderConfig(canvas, 36, 9);
-        
-        
 
         //for testing
         engine.renderer.debug = false;
@@ -69,9 +71,9 @@
         }
 
         class RoomTransition {
-             constructor() {
-                this.snap = document.createElement('canvas');
-                this.snapNew = document.createElement('canvas');
+            constructor() {
+                this.snap = document.createElement("canvas");
+                this.snapNew = document.createElement("canvas");
                 this.oldTsz = 0;
                 this.newTsz = 0;
                 this.newCaptured = false;
@@ -85,14 +87,14 @@
             capture(sourceCanvas, engine) {
                 this.snap.width = sourceCanvas.width;
                 this.snap.height = sourceCanvas.height;
-                this.snap.getContext('2d').drawImage(sourceCanvas, 0, 0);
+                this.snap.getContext("2d").drawImage(sourceCanvas, 0, 0);
                 this.oldTsz = engine.renderer.camera.tsz;
             }
 
             captureNew(sourceCanvas, engine) {
                 this.snapNew.width = sourceCanvas.width;
                 this.snapNew.height = sourceCanvas.height;
-                this.snapNew.getContext('2d').drawImage(sourceCanvas, 0, 0);
+                this.snapNew.getContext("2d").drawImage(sourceCanvas, 0, 0);
                 this.newTsz = engine.renderer.camera.tsz;
                 this.newCaptured = true;
             }
@@ -111,9 +113,9 @@
                 this.progress = Math.min(this.elapsed / this.duration, 1);
                 if (this.progress >= 1) this.active = false;
             }
-            
+
             //cubic ease-out instead of lerp because I can and it flows nicer
-            get eased() { 
+            get eased() {
                 return 1 - Math.pow(1 - this.progress, 3);
             }
 
@@ -121,14 +123,20 @@
             getNewOffset(canvasW, canvasH, scale) {
                 const p = this.eased;
                 switch (this.dir) {
-                    case 'right':
+                    case "right":
                         return { x: effectiveWidth * (1 - p), y: 0 };
-                    case 'left':
-                        return { x: effectiveWidth * p - canvasW * scale, y: 0 };
-                    case 'bottom': 
+                    case "left":
+                        return {
+                            x: effectiveWidth * p - canvasW * scale,
+                            y: 0,
+                        };
+                    case "bottom":
                         return { x: 0, y: effectiveHeight * (1 - p) };
-                    case 'top':
-                        return { x: 0, y: effectiveHeight * p - canvasH * scale };
+                    case "top":
+                        return {
+                            x: 0,
+                            y: effectiveHeight * p - canvasH * scale,
+                        };
                 }
                 return { x: 0, y: 0 };
             }
@@ -137,13 +145,19 @@
             getOldOffset(canvasW, canvasH, scale) {
                 const p = this.eased;
                 switch (this.dir) {
-                    case 'right':  
-                        return { x: effectiveWidth * (1 - p) - canvasW * scale, y: 0 };
-                    case 'left':    
+                    case "right":
+                        return {
+                            x: effectiveWidth * (1 - p) - canvasW * scale,
+                            y: 0,
+                        };
+                    case "left":
                         return { x: effectiveWidth * p, y: 0 };
-                    case 'bottom': 
-                        return { x: 0, y: effectiveHeight * (1 - p) - canvasH * scale };
-                    case 'top':    
+                    case "bottom":
+                        return {
+                            x: 0,
+                            y: effectiveHeight * (1 - p) - canvasH * scale,
+                        };
+                    case "top":
                         return { x: 0, y: effectiveHeight * p };
                 }
                 return { x: 0, y: 0 };
@@ -161,7 +175,11 @@
 
             drawOldRoom(ctx) {
                 const scale = this.oldScale;
-                const { x, y } = this.getOldOffset(this.snap.width, this.snap.height, scale);
+                const { x, y } = this.getOldOffset(
+                    this.snap.width,
+                    this.snap.height,
+                    scale,
+                );
                 ctx.save();
                 ctx.translate(x, y);
                 ctx.scale(scale, scale);
@@ -171,7 +189,11 @@
 
             drawNewRoom(ctx) {
                 const scale = this.newScale;
-                const { x, y } = this.getNewOffset(this.snapNew.width, this.snapNew.height, scale);
+                const { x, y } = this.getNewOffset(
+                    this.snapNew.width,
+                    this.snapNew.height,
+                    scale,
+                );
                 ctx.save();
                 ctx.translate(x, y);
                 ctx.scale(scale, scale);
@@ -184,10 +206,10 @@
         const addShake = (power) => shakes.push(new Shake(power));
         engine.onGroundPound = () => addShake(10);
         engine.groundPoundMult = 2;
-        const ANIM_FPS = {  
+        const ANIM_FPS = {
             idle: 4,
-            run:  8,
-            jump: 12,   
+            run: 8,
+            jump: 12,
             fall: 8,
             groundpound: 10,
             groundpoundimpact: 10,
@@ -195,24 +217,30 @@
         };
 
         const tileMap = {
-            '#': { type: MSolid, tileset: gfx.tiles.A },
-            '@': { type: MDecorative, tileset: gfx.tiles.a },
-            'B': { type: MSolid,tileset: gfx.tiles.B },
-            'b': { type: MDecorative, tileset: gfx.tiles.b },
-            '^': { type: MSolid, tileset: gfx.tiles.C },
-            '=': { type: MSolid, tileset: gfx.tiles.D },
+            "#": { type: MSolid, tileset: gfx.tiles.A },
+            "@": { type: MDecorative, tileset: gfx.tiles.a },
+            B: { type: MSolid, tileset: gfx.tiles.B },
+            b: { type: MDecorative, tileset: gfx.tiles.b },
+            "^": { type: MSolid, tileset: gfx.tiles.C },
+            "=": { type: MSolid, tileset: gfx.tiles.D },
         };
 
         engine.world.init(roomTemplates, worldAssembly, tileMap);
 
-        
-
-        engine.createPlayer(5, 5, 0.80, 1.4, (t, player) => { 
+        engine.createPlayer(5, 5, 0.8, 1.4, (t, player) => {
             if (player._hitFlash > 0) return gfx.player.hurt[0];
-            const state = player.state ?? 'idle';
-            const carryMap = { idle: 'carryidle', run: 'carryrun', jump: 'carryjump', fall: 'carryfall' };
-            const holding = player.ball && (player.engine.slowMo || player.dragging || player.carrying);
-            const spriteState = holding && carryMap[state] ? carryMap[state] : state;
+            const state = player.state ?? "idle";
+            const carryMap = {
+                idle: "carryidle",
+                run: "carryrun",
+                jump: "carryjump",
+                fall: "carryfall",
+            };
+            const holding =
+                player.ball &&
+                (player.engine.slowMo || player.dragging || player.carrying);
+            const spriteState =
+                holding && carryMap[state] ? carryMap[state] : state;
             const frames = gfx.player[spriteState] ?? gfx.player.idle;
             const fps = ANIM_FPS[state] ?? 6;
             const count = Object.keys(frames).length;
@@ -220,37 +248,45 @@
 
             //if you prefer chaining if else statements you need help
             switch (state) {
-                case 'jump':
-                case 'fall': {
-                    frame = Math.min(count - 1, Math.floor((player.airTime ?? 0) * fps));
+                case "jump":
+                case "fall": {
+                    frame = Math.min(
+                        count - 1,
+                        Math.floor((player.airTime ?? 0) * fps),
+                    );
                     break;
                 }
-                case 'groundpound': {
+                case "groundpound": {
                     frame = 0;
                     break;
                 }
-                case 'groundpoundimpact': {
+                case "groundpoundimpact": {
                     //play impact frames forward once then hold last
-                    frame = Math.min(count - 1, Math.floor((player.impactTime ?? 0) * fps));
+                    frame = Math.min(
+                        count - 1,
+                        Math.floor((player.impactTime ?? 0) * fps),
+                    );
                     break;
                 }
-                case 'throw': {
+                case "throw": {
                     const dx = player.dragX - player.dragInitX;
                     const dy = player.dragY - player.dragInitY;
                     const len = Math.sqrt(dx * dx + dy * dy);
-                    frame = Math.floor(Math.min(len / player.maxDrag, 1) * (count - 1));
+                    frame = Math.floor(
+                        Math.min(len / player.maxDrag, 1) * (count - 1),
+                    );
                     break;
                 }
                 default: {
                     frame = Math.floor(t * fps) % count;
                 }
             }
-            
+
             //just in case yk?
             frame = Math.max(0, Math.min(count - 1, frame));
             return frames[frame];
         });
-        
+
         engine._collectAnims = [];
         engine._hudFlash = {};
 
@@ -262,16 +298,18 @@
                 const room = engine.world.rooms[ri][ci];
                 const key = worldAssembly[ri]?.[ci];
                 const roomDef = roomTemplates[key];
-                const bitmap = Array.isArray(roomDef) ? roomDef : roomDef?.bitmap;
+                const bitmap = Array.isArray(roomDef)
+                    ? roomDef
+                    : roomDef?.bitmap;
                 if (!bitmap) continue;
                 for (let r = 0; r < bitmap.length; r++) {
                     for (let c = 0; c < bitmap[r].length; c++) {
-                        if (bitmap[r][c] === 'P') {
-                            engine.player.x  = c;
-                            engine.player.y  = r;
+                        if (bitmap[r][c] === "P") {
+                            engine.player.x = c;
+                            engine.player.y = r;
                             engine.player.sx = c;
                             engine.player.sy = r;
-                            engine.player.room  = room;
+                            engine.player.room = room;
                             engine.player.sroom = room;
                             engine.player.updateHitbox();
                             break outer;
@@ -301,19 +339,18 @@
             }
         };*/
 
-        
         MNPC.DEBUG_RADIUS = true;
-        
+
         const roomTransition = new RoomTransition();
         engine.onRoomChange = (dir) => {
-            if(dir === 'top') engine._pendingUpBoost = true;
+            if (dir === "top") engine._pendingUpBoost = true;
             if (roomTransition.active) return;
             roomTransition.capture(canvas, engine);
             roomTransition.start(dir);
         };
 
         /** HUD
-         *  
+         *
          * @param {CanvasRenderingContext2D} ctx
          * @param {MPlayer}  player
          * @param {number}   pixel - engine.renderer.pixel
@@ -321,7 +358,9 @@
         function renderHUD(ctx, player, pixel) {
             //hearts
             const MAX_HEARTS = 3;
-            const filledHearts = Math.ceil((player.health / player.maxHealth) * MAX_HEARTS);
+            const filledHearts = Math.ceil(
+                (player.health / player.maxHealth) * MAX_HEARTS,
+            );
             const heartSprite = gfx.player.heartFull;
             const heartW = heartSprite.w * pixel;
             const heartH = heartSprite.h * pixel;
@@ -330,15 +369,23 @@
             const marginY = Math.round(pixel * 2);
 
             for (let i = 0; i < MAX_HEARTS; i++) {
-                const sprite = i < filledHearts ? gfx.player.heartFull : gfx.player.heartEmpty;
+                const sprite =
+                    i < filledHearts
+                        ? gfx.player.heartFull
+                        : gfx.player.heartEmpty;
                 sprite.draw(ctx, marginX + i * (heartW + gap), marginY, pixel);
             }
 
             //power icons
-            const powerOrder = ['ball', 'groundedTeleport', 'groundPound', 'fullTeleport'];
+            const powerOrder = [
+                "ball",
+                "groundedTeleport",
+                "groundPound",
+                "fullTeleport",
+            ];
             const powerSprites = {
                 ball: gfx.player.spikeBall,
-                groundedTeleport:gfx.props.misc.pwrSym_groundedTeleport,
+                groundedTeleport: gfx.props.misc.pwrSym_groundedTeleport,
                 groundPound: gfx.props.misc.pwrSym_groundPound,
                 fullTeleport: gfx.props.misc.pwrSym_fullTeleport,
             };
@@ -347,8 +394,9 @@
             const iconW = ref.w * pixel;
             const iconH = ref.h * pixel;
             const iconGap = Math.round(pixel * 4);
-            const totalW = powerOrder.length * iconW + (powerOrder.length - 1) * iconGap;
-            const hudX0 = Math.round((width  - totalW) / 2);
+            const totalW =
+                powerOrder.length * iconW + (powerOrder.length - 1) * iconGap;
+            const hudX0 = Math.round((width - totalW) / 2);
             const hudY = Math.round(height - iconH - pixel * 4);
 
             powerOrder.forEach((power, i) => {
@@ -371,14 +419,14 @@
                 ctx.restore();
             });
 
-            //flying-collect animations 
+            //flying-collect animations
             for (const anim of engine._collectAnims ?? []) {
                 const sprite = powerSprites[anim.type];
                 if (!sprite) continue;
 
                 const idx = powerOrder.indexOf(anim.type);
                 const destX = hudX0 + idx * (iconW + iconGap) + iconW / 2;
-                const destY = hudY  + iconH / 2;
+                const destY = hudY + iconH / 2;
 
                 const p = Math.min(anim.progress / anim.duration, 1);
                 const ease = 1 - Math.pow(1 - p, 3);
@@ -398,64 +446,70 @@
         }
 
         //px per tile
-        const MM_CELL = 3; 
-        //px gap between rooms  
+        const MM_CELL = 3;
+        //px gap between rooms
         const MM_GAP = 3;
 
         //canvas display width an height
-        const MM_VIEW_W = 180; 
+        const MM_VIEW_W = 180;
         const MM_VIEW_H = 140;
 
         //CSS junk
-        const minimapCanvas = document.createElement('canvas');
-        minimapCanvas.id = 'minimap';
-        minimapCanvas.style.width  = MM_VIEW_W + 'px';
-        minimapCanvas.style.height = MM_VIEW_H + 'px';
-        minimapCanvas.removeAttribute('width');
-        minimapCanvas.removeAttribute('height');
-        document.getElementById('overlay').appendChild(minimapCanvas);
-        const minimapCtx = minimapCanvas.getContext('2d');
+        const minimapCanvas = document.createElement("canvas");
+        minimapCanvas.id = "minimap";
+        minimapCanvas.style.width = MM_VIEW_W + "px";
+        minimapCanvas.style.height = MM_VIEW_H + "px";
+        minimapCanvas.removeAttribute("width");
+        minimapCanvas.removeAttribute("height");
+        document.getElementById("overlay").appendChild(minimapCanvas);
+        const minimapCtx = minimapCanvas.getContext("2d");
 
-        const minimapLabel = document.createElement('div');
-        minimapLabel.id = 'minimap-label';
-        document.getElementById('overlay').appendChild(minimapLabel);
+        const minimapLabel = document.createElement("div");
+        minimapLabel.id = "minimap-label";
+        document.getElementById("overlay").appendChild(minimapLabel);
 
         //fix the canvas backing store to match display size
-        minimapCanvas.width  = MM_VIEW_W;
+        minimapCanvas.width = MM_VIEW_W;
         minimapCanvas.height = MM_VIEW_H;
 
         //pan offset (user drag, pixels in world-map space)
-        let mmPan = { 
-            x: 0, 
-            y: 0 
+        let mmPan = {
+            x: 0,
+            y: 0,
         };
-        let mmDragging = false, mmDragStartX = 0, mmDragStartY = 0, mmPanStart = { 
-            x: 0, 
-            y: 0 
-        };
+        let mmDragging = false,
+            mmDragStartX = 0,
+            mmDragStartY = 0,
+            mmPanStart = {
+                x: 0,
+                y: 0,
+            };
 
-        minimapCanvas.addEventListener('mousedown', e => {
+        minimapCanvas.addEventListener("mousedown", (e) => {
             mmDragging = true;
             mmDragStartX = e.clientX;
             mmDragStartY = e.clientY;
             mmPanStart = { ...mmPan };
-            minimapCanvas.classList.add('dragging');
+            minimapCanvas.classList.add("dragging");
             e.stopPropagation();
         });
-        window.addEventListener('mousemove', e => {
+        window.addEventListener("mousemove", (e) => {
             if (!mmDragging) return;
             mmPan.x = mmPanStart.x + (e.clientX - mmDragStartX);
             mmPan.y = mmPanStart.y + (e.clientY - mmDragStartY);
         });
-        window.addEventListener('mouseup', () => {
+        window.addEventListener("mouseup", () => {
             mmDragging = false;
-            minimapCanvas.classList.remove('dragging');
+            minimapCanvas.classList.remove("dragging");
         });
 
         const MM_TILE_COLORS = {
-            '#': '#7a8a9a', '@': '#2e3d4a',
-            'B': '#5a6a7a', 'b': '#2a3844',
-            '^': '#6a7a5a', '=': '#5a5a8a',
+            "#": "#7a8a9a",
+            "@": "#2e3d4a",
+            B: "#5a6a7a",
+            b: "#2a3844",
+            "^": "#6a7a5a",
+            "=": "#5a5a8a",
         };
 
         function renderMinimap() {
@@ -465,13 +519,16 @@
             if (!nRows || !player) return;
 
             //build grid dimensions only from non-empty cells
-            const nCols = Math.max(...rooms.map(r => r.length));
+            const nCols = Math.max(...rooms.map((r) => r.length));
 
-            const colW = Array.from({ length: nCols }, (_, ci) =>Math.max(0, ...rooms.map(row => row[ci]?.width  ?? 0)));
+            const colW = Array.from({ length: nCols }, (_, ci) =>
+                Math.max(0, ...rooms.map((row) => row[ci]?.width ?? 0)),
+            );
             const rowH = Array.from({ length: nRows }, (_, ri) =>
-                Math.max(0, ...rooms[ri].map(rm => rm?.height ?? 0)));
+                Math.max(0, ...rooms[ri].map((rm) => rm?.height ?? 0)),
+            );
 
-            //only add gap where both neighbours have content 
+            //only add gap where both neighbours have content
             const colX = [];
             let cx = 0;
             for (let ci = 0; ci < nCols; ci++) {
@@ -487,24 +544,26 @@
             }
 
             //find active room's grid position by scanning (don't rely on room.row/col)
-            let activeRi = 0, activeCi = 0;
+            let activeRi = 0,
+                activeCi = 0;
             outer: for (let ri = 0; ri < nRows; ri++) {
                 for (let ci = 0; ci < (rooms[ri]?.length ?? 0); ci++) {
                     if (rooms[ri][ci] === player.room) {
-                        activeRi = ri; activeCi = ci;
+                        activeRi = ri;
+                        activeCi = ci;
                         break outer;
                     }
                 }
             }
 
             const pr = player.room;
-            const followX = colX[activeCi] + ((pr?.width  ?? 0) * MM_CELL) / 2;
+            const followX = colX[activeCi] + ((pr?.width ?? 0) * MM_CELL) / 2;
             const followY = rowY[activeRi] + ((pr?.height ?? 0) * MM_CELL) / 2;
             const camX = followX - MM_VIEW_W / 2 - mmPan.x;
             const camY = followY - MM_VIEW_H / 2 - mmPan.y;
 
             minimapCtx.clearRect(0, 0, MM_VIEW_W, MM_VIEW_H);
-            minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+            minimapCtx.fillStyle = "rgba(0, 0, 0, 0.85)";
             minimapCtx.fillRect(0, 0, MM_VIEW_W, MM_VIEW_H);
 
             const dot = (ox, oy, wx, wy, color) => {
@@ -512,7 +571,8 @@
                 minimapCtx.fillRect(
                     ox + Math.round(wx * MM_CELL),
                     oy + Math.round(wy * MM_CELL),
-                    MM_CELL, MM_CELL
+                    MM_CELL,
+                    MM_CELL,
                 );
             };
 
@@ -533,49 +593,66 @@
                             const color = MM_TILE_COLORS[line[c]];
                             if (!color) continue;
                             minimapCtx.fillStyle = color;
-                            minimapCtx.fillRect(ox + c * MM_CELL, oy + r * MM_CELL, MM_CELL, MM_CELL);
+                            minimapCtx.fillRect(
+                                ox + c * MM_CELL,
+                                oy + r * MM_CELL,
+                                MM_CELL,
+                                MM_CELL,
+                            );
                         }
                     }
 
                     minimapCtx.globalAlpha = 1;
 
                     if (isActive) {
-                        minimapCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        minimapCtx.strokeStyle = "rgba(255, 255, 255, 0.5)";
                         minimapCtx.lineWidth = 1;
-                        minimapCtx.strokeRect(ox - 1, oy - 1, room.width * MM_CELL + 2, room.height * MM_CELL + 2);
+                        minimapCtx.strokeRect(
+                            ox - 1,
+                            oy - 1,
+                            room.width * MM_CELL + 2,
+                            room.height * MM_CELL + 2,
+                        );
 
                         for (const ent of room.entities) {
                             if (ent instanceof MPlayer) continue;
-                            if (ent instanceof MCheckpoint){ 
-                                dot(ox, oy, ent.x, ent.y, '#00e5ff'); 
-                                continue; 
+                            if (ent instanceof MCheckpoint) {
+                                dot(ox, oy, ent.x, ent.y, "#00e5ff");
+                                continue;
                             }
-                            if (ent instanceof MNPC) { 
-                                dot(ox, oy, ent.x, ent.y, '#ffe033'); 
-                                continue; 
+                            if (ent instanceof MNPC) {
+                                dot(ox, oy, ent.x, ent.y, "#ffe033");
+                                continue;
                             }
-                            if (ent instanceof MBreakWall) { 
-                                dot(ox, oy, ent.x, ent.y, '#ff8800'); 
-                                continue; 
+                            if (ent instanceof MBreakWall) {
+                                dot(ox, oy, ent.x, ent.y, "#ff8800");
+                                continue;
                             }
-                            if (ent instanceof MPowerPillar) { 
-                                dot(ox, oy, ent.x, ent.y, '#cc88ff'); 
-                                continue; 
+                            if (ent instanceof MPowerPillar) {
+                                dot(ox, oy, ent.x, ent.y, "#cc88ff");
+                                continue;
                             }
-                            if (ent instanceof MEnemy) { 
-                                dot(ox, oy, ent.x + ent.w/2 - 0.5, ent.y + ent.h/2 - 0.5, ent.dead ? '#333' : '#ff3333'); 
-                                continue; 
+                            if (ent instanceof MEnemy) {
+                                dot(
+                                    ox,
+                                    oy,
+                                    ent.x + ent.w / 2 - 0.5,
+                                    ent.y + ent.h / 2 - 0.5,
+                                    ent.dead ? "#333" : "#ff3333",
+                                );
+                                continue;
                             }
                         }
                         const ball = player.ball;
-                        if (ball?.room === room) dot(ox, oy, ball.x, ball.y, '#fff');
-                        dot(ox, oy, player.x, player.y, '#33ff66');
+                        if (ball?.room === room)
+                            dot(ox, oy, ball.x, ball.y, "#fff");
+                        dot(ox, oy, player.x, player.y, "#33ff66");
                     }
 
-                    const key = (worldAssembly[ri]?.[ci] ?? '').trim();
+                    const key = (worldAssembly[ri]?.[ci] ?? "").trim();
                     if (key) {
                         minimapCtx.globalAlpha = isActive ? 0.85 : 0.25;
-                        minimapCtx.fillStyle = '#fff';
+                        minimapCtx.fillStyle = "#fff";
                         minimapCtx.font = `${MM_CELL * 2}px monospace`;
                         minimapCtx.fillText(key, ox + 1, oy + MM_CELL * 2);
                         minimapCtx.globalAlpha = 1;
@@ -583,52 +660,57 @@
                 }
             }
 
-            const key = worldAssembly[activeRi]?.[activeCi] ?? '?';
-            minimapLabel.textContent =  `[${key}] r${activeRi}c${activeCi}  x:${player.x.toFixed(1)} y:${player.y.toFixed(1)}`;
+            const key = worldAssembly[activeRi]?.[activeCi] ?? "?";
+            minimapLabel.textContent = `[${key}] r${activeRi}c${activeCi}  x:${player.x.toFixed(1)} y:${player.y.toFixed(1)}`;
         }
-
 
         let lastTime = performance.now();
         let firstTime = performance.now();
-        let frameCount = 0, dtMs, dt, tMs, t, fps;
+        let frameCount = 0,
+            dtMs,
+            dt,
+            tMs,
+            t,
+            fps;
 
         //a render loop with a timestamp for dt updating
         const render = (timestamp) => {
             //try {
-                //prefer the rAF timestamp when present
-                const now = typeof timestamp === "number" ? timestamp : performance.now();
+            //prefer the rAF timestamp when present
+            const now =
+                typeof timestamp === "number" ? timestamp : performance.now();
 
-                //dt in milliseconds, never negative
-                dtMs = Math.max(0, now - lastTime);
-                tMs = Math.max(0, now - firstTime);
+            //dt in milliseconds, never negative
+            dtMs = Math.max(0, now - lastTime);
+            tMs = Math.max(0, now - firstTime);
 
-                lastTime = now;
+            lastTime = now;
 
-                //dt in seconds (clamped to avoid huge jumps after tab hidden)
-                dt = Math.min(dtMs / 1000, 0.1);
-                t = tMs / 1000;
-                fps = dtMs > 0 ? Math.round(1000 / dtMs) : fps;
-                
-                //peek at whether a room change is about to happen
-                //const pendingDir = world.getPendingDir();
+            //dt in seconds (clamped to avoid huge jumps after tab hidden)
+            dt = Math.min(dtMs / 1000, 0.1);
+            t = tMs / 1000;
+            fps = dtMs > 0 ? Math.round(1000 / dtMs) : fps;
 
-                //iif so: render the old room (no player!) into the snapshot
-                /*if (pendingDir) {
+            //peek at whether a room change is about to happen
+            //const pendingDir = world.getPendingDir();
+
+            //iif so: render the old room (no player!) into the snapshot
+            /*if (pendingDir) {
                     ctx.fillStyle = "rgb(100, 100, 100)";
                     ctx.fillRect(0, 0, width, height);
                     engine.renderer.renderScene(t);
                     roomTransition.capture(canvas);
                 }*/
 
-                //clear for real this frame
-                ctx.fillStyle = "rgb(30, 20, 20)";
-                ctx.fillRect(0, 0, width, height);
-                
-                //chrome be tripping yall
-                ctx.imageSmoothingEnabled = false;
+            //clear for real this frame
+            ctx.fillStyle = "rgb(30, 20, 20)";
+            ctx.fillRect(0, 0, width, height);
 
-                //transistion delay for room swap
-                /*world._transitionCooldown = Math.max(0, world._transitionCooldown - dt);
+            //chrome be tripping yall
+            ctx.imageSmoothingEnabled = false;
+
+            //transistion delay for room swap
+            /*world._transitionCooldown = Math.max(0, world._transitionCooldown - dt);
                 world.execute(engine.player);
 
 
@@ -636,85 +718,90 @@
                 world.execute(engine.player);
                 if (pendingDir) roomTransition.start(pendingDir);*/
 
-                //tick transition an' shake
-                //roomTransition.tick(dt);
-                shakes.forEach((s, i) => s.active(i));
-                
-                if (roomTransition.active) {
-                    if (!roomTransition.newCaptured) {
-                        const cam = engine.renderer.camera;
-                        //cam.lockZoom = true;
-                        /*if (roomTransition.dir === 'left' || roomTransition.dir === 'right') {
+            //tick transition an' shake
+            //roomTransition.tick(dt);
+            shakes.forEach((s, i) => s.active(i));
+
+            if (roomTransition.active) {
+                if (!roomTransition.newCaptured) {
+                    const cam = engine.renderer.camera;
+                    //cam.lockZoom = true;
+                    /*if (roomTransition.dir === 'left' || roomTransition.dir === 'right') {
                             cam.lockFocusY = true;
                         } else {
                             cam.lockFocusX = true;
                         }*/
-                        engine.renderer.render(t);/*
+                    engine.renderer.render(t); /*
                         cam.lockZoom   = false;
                         cam.lockFocusX = false;
                         cam.lockFocusY = false;*/
-                        roomTransition.captureNew(canvas, engine);
-                        ctx.fillStyle = "rgb(100, 100, 100)";
-                        ctx.fillRect(0, 0, width, height);
-                    }
-
-                    ctx.save();
-                    ctx.translate(shake.x, shake.y);
-                    roomTransition.drawOldRoom(ctx);
-                    roomTransition.drawNewRoom(ctx);
-                    ctx.restore();
-
-                    engine.renderer._skipRender = true;
-                    //freeze physics an' preserve velocity
-                    engine.tick(t, 0, {});    
-                    engine.renderer._skipRender = false;
-                    roomTransition.tick(dt);
-                } else {
-                    ctx.save();
-                    ctx.translate(shake.x, shake.y);
-                    engine.tick(t, dt, events);
-                    
-                    //crazy Arrow idea lol
-                    if (engine.slowMo) {
-                        const grad = ctx.createRadialGradient(
-                            width / 2, height / 2, height * 0.2,
-                            width / 2, height / 2, height * 0.85
-                        );
-                        grad.addColorStop(0, 'rgba(30, 80, 180, 0)');
-                        grad.addColorStop(1, 'rgba(10, 30, 120, 0.55)');
-                        ctx.fillStyle = grad;
-                        ctx.fillRect(0, 0, width, height);
-                    }
-
-                    ctx.restore();
-                    roomTransition.tick(dt);
-                    if (!roomTransition.active && engine._pendingUpBoost) {
-                        engine._pendingUpBoost = false;
-                        engine.player.yv = -engine.jump;
-                    }
+                    roomTransition.captureNew(canvas, engine);
+                    ctx.fillStyle = "rgb(100, 100, 100)";
+                    ctx.fillRect(0, 0, width, height);
                 }
 
+                ctx.save();
+                ctx.translate(shake.x, shake.y);
+                roomTransition.drawOldRoom(ctx);
+                roomTransition.drawNewRoom(ctx);
+                ctx.restore();
 
-                //advance collect animations
-                if (engine._collectAnims) {
-                    for (const anim of engine._collectAnims) anim.progress += dt;
-                    engine._collectAnims = engine._collectAnims.filter(a => a.progress < a.duration);
+                engine.renderer._skipRender = true;
+                //freeze physics an' preserve velocity
+                engine.tick(t, 0, {});
+                engine.renderer._skipRender = false;
+                roomTransition.tick(dt);
+            } else {
+                ctx.save();
+                ctx.translate(shake.x, shake.y);
+                engine.tick(t, dt, events);
+
+                //crazy Arrow idea lol
+                if (engine.slowMo) {
+                    const grad = ctx.createRadialGradient(
+                        width / 2,
+                        height / 2,
+                        height * 0.2,
+                        width / 2,
+                        height / 2,
+                        height * 0.85,
+                    );
+                    grad.addColorStop(0, "rgba(30, 80, 180, 0)");
+                    grad.addColorStop(1, "rgba(10, 30, 120, 0.55)");
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, width, height);
                 }
-                //tick HUD flash timers down
-                if (engine._hudFlash) {
-                    for (const k of Object.keys(engine._hudFlash)) {
-                        engine._hudFlash[k] = Math.max(0, engine._hudFlash[k] - dt);
-                    }
+
+                ctx.restore();
+                roomTransition.tick(dt);
+                if (!roomTransition.active && engine._pendingUpBoost) {
+                    engine._pendingUpBoost = false;
+                    engine.player.yv = -engine.jump;
                 }
+            }
 
-                renderHUD(ctx, engine.player, engine.renderer.basePixel);
+            //advance collect animations
+            if (engine._collectAnims) {
+                for (const anim of engine._collectAnims) anim.progress += dt;
+                engine._collectAnims = engine._collectAnims.filter(
+                    (a) => a.progress < a.duration,
+                );
+            }
+            //tick HUD flash timers down
+            if (engine._hudFlash) {
+                for (const k of Object.keys(engine._hudFlash)) {
+                    engine._hudFlash[k] = Math.max(0, engine._hudFlash[k] - dt);
+                }
+            }
 
-                //minimap
-                renderMinimap();
+            renderHUD(ctx, engine.player, engine.renderer.basePixel);
 
-                //ctx.restore();
-                frameCount++;
-                Object.assign(eventsPrev, events);
+            //minimap
+            renderMinimap();
+
+            //ctx.restore();
+            frameCount++;
+            Object.assign(eventsPrev, events);
             //} catch (e) {
             //    console.error("Main loop error\n" + e.stack);
             //}
@@ -736,10 +823,10 @@
             }
         });
         /**
-        * main animation loop that requests frames and triggers rendering while the game is running
-        * @param {number} now - the current timestamp provided by requestanimationframe
-        * @returns {void}
-        */
+         * main animation loop that requests frames and triggers rendering while the game is running
+         * @param {number} now - the current timestamp provided by requestanimationframe
+         * @returns {void}
+         */
         function loop(now) {
             //if (!debug.freeze) {
             if (!running) {
@@ -757,4 +844,3 @@
         rafId = requestAnimationFrame(loop);
     </script>
 </html>
-

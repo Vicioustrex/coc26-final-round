@@ -1,59 +1,60 @@
-const { 
-    MDecorative, 
-    MSolid, 
-    MHazard, 
-    MEntity, 
-    MPlayer, 
-    MEnemy, 
-    MEngine, 
-    MCheckpoint, 
-    MGauntletEntryPoint,
-    MGauntletSpawnPoint,
-    MNPC, 
-    MBlob, 
+const {
+    MDecorative,
+    MSolid,
+    MHazard,
+    MEntity,
+    MPlayer,
+    MEnemy,
+    MEngine,
+    MCheckpoint,
+    MTeleportEntryPoint,
+    MTeleportSpawnPoint,
+    MGauntletDoor,
+    MNPC,
+    MBlob,
     MBreakWall,
     MMinitaur,
     MMimic,
     MPowerPillar,
     MFlyer,
     MSwarmer,
-    MPothead
- } = (() => {
+    MPothead,
+} = (() => {
     /** MBox: an AABB hitbox implementation.
-     * 
+     *
      */
     class MBox {
         /** Constructs an instance of MBox.
-         * 
+         *
          * @constructor
-         * @param {number} x1 
-         * @param {number} y1 
-         * @param {number} x2 
-         * @param {number} y2 
+         * @param {number} x1
+         * @param {number} y1
+         * @param {number} x2
+         * @param {number} y2
          */
         constructor(x1, y1, x2, y2) {
             this.engine = null;
             this.set(x1, y1, x2, y2);
         }
-        
+
         /** Alternative to new MBox for width and height
-         * 
-         * @param {number} x 
-         * @param {number} y 
-         * @param {number} w 
-         * @param {number} h 
-         * @returns {void}  
+         *
+         * @param {number} x
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
+         * @returns {void}
          */
         static fromWH(x, y, w, h) {
             return new MBox(x, y, x + w, y + h);
         }
 
         /** Sets the hitbox without creating a new instance.
-         * 
-         * @param {number} x1 
-         * @param {number} y1 
-         * @param {number} x2 
-         * @param {number} y2 
+         *
+         * @param {number} x1
+         * @param {number} y1
+         * @param {number} x2
+         * @param {number} y2
          * @returns {void}
          */
         set(x1, y1, x2, y2) {
@@ -65,11 +66,11 @@ const {
         }
 
         /** Sets the hitbox without creating a new instance, for width and height.
-         * 
+         *
          * @param {number} x
-         * @param {number} y 
-         * @param {number} w 
-         * @param {number} h 
+         * @param {number} y
+         * @param {number} w
+         * @param {number} h
          * @returns {void}
          */
         setWH(x, y, w, h) {
@@ -77,26 +78,28 @@ const {
         }
 
         /** Checks for collision with alternate MBox
-         * 
-         * @param {MBox} that 
+         *
+         * @param {MBox} that
          * @returns {boolean}
          */
         collision(that) {
             return (
-                this.x1 <= that.x2 && that.x1 <= this.x2 &&
-                this.y1 <= that.y2 && that.y1 <= this.y2
+                this.x1 <= that.x2 &&
+                that.x1 <= this.x2 &&
+                this.y1 <= that.y2 &&
+                that.y1 <= this.y2
             );
         }
     }
 
     /** MObject: a general object that is rendered.
-     * 
+     *
      */
     class MObject {
         /** Constructs an instance of MOBject.
-         * 
+         *
          * @constructor
-         * @param {MBox} dbox 
+         * @param {MBox} dbox
          * @param {(number, MObject) => SpriteRef} texturer
          */
         constructor(dbox, texturer) {
@@ -108,11 +111,11 @@ const {
     }
 
     /** MDecorative: a decorative object purely for aesthetics, no function.
-     * 
+     *
      */
     class MDecorative extends MObject {
         /** Constructs an instance of MDecorative.
-         * 
+         *
          * @constructor
          * @param {number} x
          * @param {number} y
@@ -127,29 +130,26 @@ const {
         }
 
         /** Renders the thing
-         * 
-         * @param {CanvasRenderingContext2D} ctx 
-         * @param {MCamera} camera 
+         *
+         * @param {CanvasRenderingContext2D} ctx
+         * @param {MCamera} camera
          * @param {number} t
          * @param {number} pixel
          * @returns {void}
          */
         render(ctx, camera, t, pixel) {
             //the horror of destructoring, to add a break or to not add a break
-            const { 
-                x, 
-                y 
-            } = camera.worldToScreen(this.x, this.y);
+            const { x, y } = camera.worldToScreen(this.x, this.y);
             this.texturer(t, this).draw(ctx, x, y, pixel, this.facing ?? 1);
         }
     }
 
     /** MBody: anything with a hitbox.
-     * 
+     *
      */
     class MBody extends MObject {
         /** Constructs an instance of MBody.
-         * 
+         *
          * @constructor
          * @param {number} x
          * @param {number} y
@@ -167,9 +167,9 @@ const {
         }
 
         /** Renders the thing
-         * 
-         * @param {CanvasRenderingContext2D} ctx 
-         * @param {MCamera} camera 
+         *
+         * @param {CanvasRenderingContext2D} ctx
+         * @param {MCamera} camera
          * @param {number} t
          * @param {number} pixel
          * @returns {void}
@@ -179,7 +179,7 @@ const {
             const sprite = this.texturer(t, this);
 
             //offset so sprite is centered on hitbox
-            const offsetX = ((this.w * camera.tsz - sprite.w * pixel) / 2) - 2;
+            const offsetX = (this.w * camera.tsz - sprite.w * pixel) / 2 - 2;
             const offsetY = (this.h * camera.tsz - sprite.h * pixel) / 2;
 
             sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
@@ -187,11 +187,11 @@ const {
     }
 
     /** MSolid: anything that can be stood upon; a block.
-     * 
+     *
      */
     class MSolid extends MBody {
         /** Constructs an instance of MSolid.
-         * 
+         *
          * @constructor
          * @param {number} x
          * @param {number} y
@@ -205,11 +205,11 @@ const {
     }
 
     /** MHazard: any static object that can kill you.
-     * 
+     *
      */
     class MHazard extends MBody {
         /** Constructs an instance of MHazard.
-         * 
+         *
          * @constructor
          * @param {number} x
          * @param {number} y
@@ -223,11 +223,11 @@ const {
     }
 
     /** MEntity: any movable entity.
-     * 
+     *
      */
     class MEntity extends MBody {
         /** Constructs an instance of MEntity.
-         * 
+         *
          * @constructor
          * @param {number} x
          * @param {number} y
@@ -250,7 +250,7 @@ const {
         }
 
         /** Update hitbox
-         * 
+         *
          * @returns {void}
          */
         updateHitbox() {
@@ -259,7 +259,7 @@ const {
         }
 
         /** Transport entity to a different room if it enters one
-         * 
+         *
          * @returns {void}
          */
         transport() {
@@ -267,39 +267,41 @@ const {
         }
 
         /** Goes through array, returns first element touching of type
-         * 
+         *
          * @param {typeof MObject} type
          * @param {MWorld} world
          * @returns {MObject?}
          */
         touching(type, world) {
-            return world.iterateRoom(this.room, obj => {
-                if (obj instanceof type && obj?.hbox?.collision?.(this.hbox)) return obj;
+            return world.iterateRoom(this.room, (obj) => {
+                if (obj instanceof type && obj?.hbox?.collision?.(this.hbox))
+                    return obj;
             });
         }
 
         /** Goes through array, returns all elements touching of type
-         * 
+         *
          * @param {typeof MObject} type
          * @param {MWorld} world
          * @returns {MObject[]}
          */
         touchingAll(type, world) {
             const out = [];
-            world.iterateRoom(this.room, obj => {
-                if (obj instanceof type && obj?.hbox?.collision?.(this.hbox)) out.push(obj);
+            world.iterateRoom(this.room, (obj) => {
+                if (obj instanceof type && obj?.hbox?.collision?.(this.hbox))
+                    out.push(obj);
             });
             return out;
         }
 
-        /** Tick the entity forward   
-         * 
-         * @param {number} dt 
+        /** Tick the entity forward
+         *
+         * @param {number} dt
          * @param {Object} events
          * @param {{ hvel?: number, jump?: number }} [attributes={}]
          * @returns {void}
          */
-        tick(dt, events, attributes={}) {
+        tick(dt, events, attributes = {}) {
             const hvel = attributes.hvel ?? this.engine.hvel;
             const jump = attributes.jump ?? this.engine.jump;
             const friction = attributes.friction ?? this.engine.friction;
@@ -353,11 +355,15 @@ const {
         static bounce = 0.65;
 
         constructor(owner, xv, yv) {
-            const w = 1, h = 1;
+            const w = 1,
+                h = 1;
             super(
                 owner.x + owner.w / 2 - w / 2,
                 owner.y + owner.h / 2 - h / 2,
-                w, h, 1, () => gfx.player.spikeBall
+                w,
+                h,
+                1,
+                () => gfx.player.spikeBall,
             );
             this.xv = xv;
             this.yv = yv;
@@ -391,17 +397,30 @@ const {
             this.transport();
             const xt = this.touching(MSolid, world);
             if (xt) {
-                if (xt instanceof MBreakWall && !xt._breaking && !this._hitCooldowns.has(xt)) {
+                if (
+                    xt instanceof MBreakWall &&
+                    !xt._breaking &&
+                    !this._hitCooldowns.has(xt)
+                ) {
                     if (xt.onBallHit(this)) {
                         //correct side so da ball punches through, an the wall starts crumbling
-                        this._hitCooldowns.set(xt, MBreakWall.BREAK_DURATION + 0.1);
+                        this._hitCooldowns.set(
+                            xt,
+                            MBreakWall.BREAK_DURATION + 0.1,
+                        );
                     } else {
                         //wrong side.
-                        this.x = this.xv > 0 ? xt.hbox.x1 - this.w - epsilon : xt.hbox.x2 + epsilon;
+                        this.x =
+                            this.xv > 0
+                                ? xt.hbox.x1 - this.w - epsilon
+                                : xt.hbox.x2 + epsilon;
                         this.xv *= -MBall.bounce;
                     }
                 } else if (!(xt instanceof MBreakWall && xt._breaking)) {
-                    this.x = this.xv > 0 ? xt.hbox.x1 - this.w - epsilon : xt.hbox.x2 + epsilon;
+                    this.x =
+                        this.xv > 0
+                            ? xt.hbox.x1 - this.w - epsilon
+                            : xt.hbox.x2 + epsilon;
                     this.xv *= -MBall.bounce;
                 }
             }
@@ -413,7 +432,9 @@ const {
             const yt = this.touching(MSolid, world);
             if (yt) {
                 const falling = this.yv > 0;
-                this.y = falling ? yt.hbox.y1 - this.h - epsilon : yt.hbox.y2 + epsilon;
+                this.y = falling
+                    ? yt.hbox.y1 - this.h - epsilon
+                    : yt.hbox.y2 + epsilon;
                 this.yv *= -MBall.bounce;
                 if (falling) {
                     this.onGround = true;
@@ -433,13 +454,13 @@ const {
             if (this.hbox.collision(this.engine.player)) {
                 hitEnemies.push(this.engine.player);
             }
-            hitEnemies = hitEnemies.filter(e => e != this.owner);
+            hitEnemies = hitEnemies.filter((e) => e != this.owner);
             for (const enemy of hitEnemies) {
                 if (enemy.dead || this._hitCooldowns.has(enemy)) continue;
 
                 //reflect whichever axis has less overlap (same logic as solid)
-                const dx = (this.x + this.w / 2) - (enemy.x + enemy.w / 2);
-                const dy = (this.y + this.h / 2) - (enemy.y + enemy.h / 2);
+                const dx = this.x + this.w / 2 - (enemy.x + enemy.w / 2);
+                const dy = this.y + this.h / 2 - (enemy.y + enemy.h / 2);
                 if (Math.abs(dx) >= Math.abs(dy)) {
                     this.xv *= -MBall.bounce;
                 } else {
@@ -457,9 +478,8 @@ const {
         }
     }
 
-
     /** MPlayer: the player.
-     * 
+     *
      */
     class MPlayer extends MEntity {
         static throwFactor = 14;
@@ -467,7 +487,7 @@ const {
         static minDrag = 28;
 
         /** Constructs an instance of MPlayer.
-         * 
+         *
          * @constructor
          * @param {number} x
          * @param {number} y
@@ -477,10 +497,10 @@ const {
          */
         constructor(x, y, w, h, texturer) {
             super(x, y, w, h, 100, texturer);
-            this.state = 'idle';
+            this.state = "idle";
             this.facing = 1;
             this.groundPounding = false;
-            this.groundPoundTime = 0; 
+            this.groundPoundTime = 0;
             this.impactTime = null;
             this.dragging = false;
             this.carrying = false;
@@ -515,8 +535,8 @@ const {
                 for (const obj of room.zia[z]) {
                     if (!(obj instanceof MEnemy) || obj.dead) continue;
 
-                    const overlapX = (this.x + this.w / 2) - (obj.x + obj.w / 2);
-                    const overlapY = (this.y + this.h / 2) - (obj.y + obj.h / 2);
+                    const overlapX = this.x + this.w / 2 - (obj.x + obj.w / 2);
+                    const overlapY = this.y + this.h / 2 - (obj.y + obj.h / 2);
                     const minDistX = (this.w + obj.w) / 2;
                     const minDistY = (this.h + obj.h) / 2;
                     const absX = Math.abs(overlapX);
@@ -549,7 +569,8 @@ const {
                                     this._standingOnEnemy = obj;
                                     this._standingOnEnemyTimer = 0;
                                 }
-                                this._standingOnEnemyTimer += this.engine.lastDt ?? 0;
+                                this._standingOnEnemyTimer +=
+                                    this.engine.lastDt ?? 0;
                                 if (this._standingOnEnemyTimer >= 1.0) {
                                     this._standingOnEnemyTimer = 0;
                                     obj.onPlayerContact(this);
@@ -565,7 +586,7 @@ const {
                                 const events = this.engine.events ?? {};
                                 if (events.KeyW) {
                                     this.yv = -this.engine.jump;
-                                    this.grounded = false;  
+                                    this.grounded = false;
                                 }
                             } else {
                                 //player above enemy
@@ -584,15 +605,19 @@ const {
         }
 
         /** Tick the game forward
-         * 
-         * @param {number} dt 
+         *
+         * @param {number} dt
          * @param {Object} events
          * @param {Object} eventsPrev
          * @returns {void}
-         */ 
+         */
         tick(dt, events, eventsPrev) {
             //const canGroundPound = !this.grounded && !this.groundPounding && (this.airTime ?? 0) > 0.1;
-            const canGroundPound = this.powers.groundPound && !this.grounded && !this.groundPounding && (this.airTime ?? 0) > 0.1;
+            const canGroundPound =
+                this.powers.groundPound &&
+                !this.grounded &&
+                !this.groundPounding &&
+                (this.airTime ?? 0) > 0.1;
             const keySJustPressed = events.KeyS && !eventsPrev.KeyS;
 
             if (canGroundPound && keySJustPressed) {
@@ -623,7 +648,12 @@ const {
             if (!this.carrying) this.ball?.tick?.(dt, {}, { friction: 1 });
 
             //if (events.Mouse && !this.prevMouse && !this.ball) {
-            if (events.Mouse && !eventsPrev.Mouse && (!this.ball || this.carrying) && this.powers.ball) {
+            if (
+                events.Mouse &&
+                !eventsPrev.Mouse &&
+                (!this.ball || this.carrying) &&
+                this.powers.ball
+            ) {
                 this.dragging = true;
                 this.dragInitX = events.MouseX;
                 this.dragInitY = events.MouseY;
@@ -650,68 +680,96 @@ const {
                 } else {
                     //real throw
                     if (len > this.constructor.maxDrag) {
-                        dx = dx / len * this.constructor.maxDrag;
-                        dy = dy / len * this.constructor.maxDrag;
+                        dx = (dx / len) * this.constructor.maxDrag;
+                        dy = (dy / len) * this.constructor.maxDrag;
                     }
-                    this.ball = new MBall(this,
-                        dx / tsz * MPlayer.throwFactor,
-                        dy / tsz * MPlayer.throwFactor,
+                    this.ball = new MBall(
+                        this,
+                        (dx / tsz) * MPlayer.throwFactor,
+                        (dy / tsz) * MPlayer.throwFactor,
                     );
                 }
-            } else if (events.Mouse && !eventsPrev.Mouse && this.ball && !this.carrying) {
-                const canTeleport = this.powers.fullTeleport ||
-                       (this.powers.groundedTeleport && this.ball.onGround);
+            } else if (
+                events.Mouse &&
+                !eventsPrev.Mouse &&
+                this.ball &&
+                !this.carrying
+            ) {
+                const canTeleport =
+                    this.powers.fullTeleport ||
+                    (this.powers.groundedTeleport && this.ball.onGround);
                 if (canTeleport) {
-                
-                //click while ball is out so holding and dragging right away works for quick chaining
-                this.x = this.ball.x + this.ball.w / 2 - this.w / 2;
-                this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
-                this.xv = this.ball.xv;
-                this.yv = this.ball.yv;
-                if (this.ball.room != this.room) {
-                    const dr = this.ball.room.row - this.room.row;
-                    const dc = this.ball.room.col - this.room.col;
-                    this.room = this.ball.room;
-                    // if to adjacent room, otherwise way too complicated
-                    if (Math.abs(dr) + Math.abs(dc) == 1) {
-                        const dir = dc > 0 ? 'right' : dc < 0 ? 'left' : dr > 0 ? 'bottom' : 'top';
-                        this._roomChangedThisFrame = true;
-                        this.engine.onRoomChange?.(dir);
+                    //click while ball is out so holding and dragging right away works for quick chaining
+                    this.x = this.ball.x + this.ball.w / 2 - this.w / 2;
+                    this.y = this.ball.y + this.ball.h / 2 - this.h / 2;
+                    this.xv = this.ball.xv;
+                    this.yv = this.ball.yv;
+                    if (this.ball.room != this.room) {
+                        const dr = this.ball.room.row - this.room.row;
+                        const dc = this.ball.room.col - this.room.col;
+                        this.room = this.ball.room;
+                        // if to adjacent room, otherwise way too complicated
+                        if (Math.abs(dr) + Math.abs(dc) == 1) {
+                            const dir =
+                                dc > 0
+                                    ? "right"
+                                    : dc < 0
+                                      ? "left"
+                                      : dr > 0
+                                        ? "bottom"
+                                        : "top";
+                            this._roomChangedThisFrame = true;
+                            this.engine.onRoomChange?.(dir);
+                        }
                     }
-                }
-                this.transport();
-                this.engine.slowMo = true;
-                this.carrying = true;
-                //ball stays alive
-                this.dragging = true;
-                this.dragInitX = events.MouseX;
-                this.dragInitY = events.MouseY;
-                this.dragX = events.MouseX;
-                this.dragY = events.MouseY;
+                    this.transport();
+                    this.engine.slowMo = true;
+                    this.carrying = true;
+                    //ball stays alive
+                    this.dragging = true;
+                    this.dragInitX = events.MouseX;
+                    this.dragInitY = events.MouseY;
+                    this.dragX = events.MouseX;
+                    this.dragY = events.MouseY;
 
-                //push player out of any wall they landed in
-                const world = this.engine.world;
-                this.updateHitbox();
-                if (this.touching(MSolid, world)) {
-                    //try nudging in the direction the ball was travelling
-                    const nudges = [
-                        [Math.sign(this.xv) * (this.w + this.engine.epsilon), 0],
-                        [0, Math.sign(this.yv) * (this.h + this.engine.epsilon)],
-                        [-Math.sign(this.xv) * (this.w + this.engine.epsilon), 0],
-                        [0, -Math.sign(this.yv) * (this.h + this.engine.epsilon)],
-                    ];
-                    for (const [nx, ny] of nudges) {
-                        this.x += nx;
-                        this.y += ny;
-                        this.updateHitbox();
-                        if (!this.touching(MSolid, world)) break;
-                        this.x -= nx;
-                        this.y -= ny;
-                        this.updateHitbox();
+                    //push player out of any wall they landed in
+                    const world = this.engine.world;
+                    this.updateHitbox();
+                    if (this.touching(MSolid, world)) {
+                        //try nudging in the direction the ball was travelling
+                        const nudges = [
+                            [
+                                Math.sign(this.xv) *
+                                    (this.w + this.engine.epsilon),
+                                0,
+                            ],
+                            [
+                                0,
+                                Math.sign(this.yv) *
+                                    (this.h + this.engine.epsilon),
+                            ],
+                            [
+                                -Math.sign(this.xv) *
+                                    (this.w + this.engine.epsilon),
+                                0,
+                            ],
+                            [
+                                0,
+                                -Math.sign(this.yv) *
+                                    (this.h + this.engine.epsilon),
+                            ],
+                        ];
+                        for (const [nx, ny] of nudges) {
+                            this.x += nx;
+                            this.y += ny;
+                            this.updateHitbox();
+                            if (!this.touching(MSolid, world)) break;
+                            this.x -= nx;
+                            this.y -= ny;
+                            this.updateHitbox();
+                        }
                     }
-                }
-                this.transport();
-                
+                    this.transport();
                 }
             }
 
@@ -732,7 +790,12 @@ const {
             //     }
             // }
 
-            if (this.ball && !this.carrying && !this.engine.slowMo && !this.dragging) {
+            if (
+                this.ball &&
+                !this.carrying &&
+                !this.engine.slowMo &&
+                !this.dragging
+            ) {
                 if (events.KeyA || events.KeyD || events.KeyW || events.KeyS) {
                     this.carrying = true;
                 }
@@ -741,7 +804,7 @@ const {
             if (this.ball && this.carrying) {
                 this.ball.xv = 0;
                 this.ball.yv = 0;
-                this.ball.x = (this.x + this.w / 2 - this.ball.w / 2) + 0.05;
+                this.ball.x = this.x + this.w / 2 - this.ball.w / 2 + 0.05;
                 this.ball.y = this.y - 0.55;
                 this.ball.room = this.room;
                 this.ball.updateHitbox();
@@ -762,26 +825,26 @@ const {
             }
 
             if (this.groundPounding) {
-                this.state = 'groundpound';
+                this.state = "groundpound";
             } else if (this.impactTime !== null) {
-                this.state = 'groundpoundimpact';
+                this.state = "groundpoundimpact";
             } else if (this.dragging && !this.carrying && !this.ball) {
-                this.state = 'throw';
+                this.state = "throw";
             } else if (!this.grounded) {
                 this.airTime = (this.airTime ?? 0) + dt;
-                this.state = this.yv < 0 ? 'jump' : 'fall';
+                this.state = this.yv < 0 ? "jump" : "fall";
             } else {
                 this.airTime = 0;
-                this.state = Math.abs(this.xv) > 0.5 ? 'run' : 'idle';
+                this.state = Math.abs(this.xv) > 0.5 ? "run" : "idle";
             }
 
             this._wasGrounded = this.grounded;
         }
 
         /** Renders the thing
-         * 
-         * @param {CanvasRenderingContext2D} ctx 
-         * @param {MCamera} camera 
+         *
+         * @param {CanvasRenderingContext2D} ctx
+         * @param {MCamera} camera
          * @param {number} t
          * @param {number} pixel
          * @returns {void}
@@ -803,8 +866,8 @@ const {
                 const maxDrag = this.maxDrag;
                 const len = Math.sqrt(dx * dx + dy * dy);
                 if (len > maxDrag) {
-                    dx = dx / len * maxDrag;
-                    dy = dy / len * maxDrag;
+                    dx = (dx / len) * maxDrag;
+                    dy = (dy / len) * maxDrag;
                 }
                 ctx.save();
                 ctx.strokeStyle = "#ffffff";
@@ -816,7 +879,6 @@ const {
                 ctx.restore();
             }
         }
-        
     }
 
     /** base class for all enemies extend this with `extends MEnemy`.
@@ -836,11 +898,11 @@ const {
          */
         constructor(x, y, w, h, maxHealth, texturer) {
             super(x, y, w, h, maxHealth, texturer);
-            this.state = 'idle';
+            this.state = "idle";
             this.facing = 1;
             this.dead = false;
             this.stateTime = 0;
-            
+
             //physics intent flags set in ai(), consumed in tick()
             this._moveLeft = false;
             this._moveRight = false;
@@ -857,10 +919,10 @@ const {
             this.deAggroRange = this.deAggroRange ?? 18;
 
             //patrol state
-            this.patrolDir  = 1;
+            this.patrolDir = 1;
             this.stallTimer = 0;
             this.jumpCooldown = 0;
-            this.chaseMode  = false;
+            this.chaseMode = false;
 
             // death
             this._deathTimer = 0;
@@ -874,35 +936,36 @@ const {
         ai(dt) {
             const dist = this._playerDist();
 
-            if (!this.chaseMode && dist <= this.aggroRange)  this.chaseMode = true;
-            if (this.chaseMode  && dist >  this.deAggroRange) this.chaseMode = false;
+            if (!this.chaseMode && dist <= this.aggroRange)
+                this.chaseMode = true;
+            if (this.chaseMode && dist > this.deAggroRange)
+                this.chaseMode = false;
 
-            if (this.chaseMode) {this._updatePath(dt, 0.5); 
+            if (this.chaseMode) {
+                this._updatePath(dt, 0.5);
 
                 if (this._path?.length) {
                     this._followPath(dt);
-                } 
-                else {  
+                } else {
                     // const hDir = this._playerHDir();
                     // if (hDir ===  1) this._moveRight = true;
                     // if (hDir === -1) this._moveLeft = true;
                     // this.facing = hDir || this.facing;
                     const hDir = this._playerHDir();
-                    if (hDir ===  1) this._moveRight = true;
+                    if (hDir === 1) this._moveRight = true;
                     if (hDir === -1) this._moveLeft = true;
                     const newFacing1 = hDir || this.facing;
-                    if (newFacing1 !== this.facing) { 
-                        this.facing = newFacing1; 
+                    if (newFacing1 !== this.facing) {
+                        this.facing = newFacing1;
                         this._facingLock = 0.2;
-                     }
-                    else this.facing = newFacing1;
+                    } else this.facing = newFacing1;
                 }
             } else {
                 if (this.patrolDir === 1) this._moveRight = true;
-                else this._moveLeft  = true;
-                if (this.patrolDir !== this.facing) { 
-                    this.facing = this.patrolDir; 
-                    this._facingLock = 0.2; 
+                else this._moveLeft = true;
+                if (this.patrolDir !== this.facing) {
+                    this.facing = this.patrolDir;
+                    this._facingLock = 0.2;
                 }
 
                 if (this.grounded && Math.abs(this.xv) < 0.15) {
@@ -918,26 +981,26 @@ const {
 
                 this.jumpCooldown -= dt;
                 if (this.grounded && this.jumpCooldown <= 0) {
-                    this._jumpQueued  = true;
+                    this._jumpQueued = true;
                     this.jumpCooldown = 1.5 + Math.random() * 2;
                 }
             }
 
-            this.state = this.grounded ? 'idle' : 'jump';
+            this.state = this.grounded ? "idle" : "jump";
         }
-        
+
         /** Returns signed horizontal distance to player (positive = player is right). */
         _playerDX() {
             const p = this.engine?.player;
             if (!p) return 0;
-            return (p.x + p.w / 2) - (this.x + this.w / 2);
+            return p.x + p.w / 2 - (this.x + this.w / 2);
         }
 
         /** Returns signed vertical distance to player (positive = player is below). */
         _playerDY() {
             const p = this.engine?.player;
             if (!p) return 0;
-            return (p.y + p.h / 2) - (this.y + this.h / 2);
+            return p.y + p.h / 2 - (this.y + this.h / 2);
         }
 
         /** Returns Euclidean distance to player. */
@@ -946,7 +1009,8 @@ const {
             if (!p) return Infinity;
             //so if in a differant room they ignore the player (patrol mode kinda)
             if (p.room !== this.room) return Infinity;
-            const dx = this._playerDX(), dy = this._playerDY();
+            const dx = this._playerDX(),
+                dy = this._playerDY();
             return Math.sqrt(dx * dx + dy * dy);
         }
 
@@ -958,9 +1022,9 @@ const {
         /** Returns -1 / 0 / 1: which horizontal direction the player is in. */
         _playerHDir() {
             const dx = this._playerDX();
-            return dx === 0 ? 0 : (dx > 0 ? 1 : -1);
+            return dx === 0 ? 0 : dx > 0 ? 1 : -1;
         }
-        
+
         /**
          * Requests a fresh path to the player via the engine's graph.
          * it has interval to keep it fast
@@ -981,7 +1045,7 @@ const {
                 this.x + this.w / 2,
                 this.y + this.h,
                 p.x + p.w / 2,
-                p.y + p.h
+                p.y + p.h,
             );
         }
 
@@ -991,7 +1055,6 @@ const {
          * @param {number} dt
          */
         _followPath(dt) {
-
             //screw comments
 
             if (!this._path?.length) return;
@@ -1012,12 +1075,12 @@ const {
                 if (dx > 0) this._moveRight = true;
                 else this._moveLeft = true;
                 //only commit facing for real movement
-                if (Math.abs(dx) > 0.5) {          
+                if (Math.abs(dx) > 0.5) {
                     //this.facing = dx > 0 ? 1 : -1;
                     //another new concept
                     const newFacing = dx > 0 ? 1 : -1;
-                    if (newFacing !== this.facing) { 
-                        this.facing = newFacing; 
+                    if (newFacing !== this.facing) {
+                        this.facing = newFacing;
                         this._facingLock = 0.2;
                     }
                 }
@@ -1025,7 +1088,8 @@ const {
 
             if (step.jump) {
                 if (this.grounded) {
-                    const wallBlocked = Math.abs(this.xv) < 0.15 && Math.abs(dx) > 0.3;
+                    const wallBlocked =
+                        Math.abs(this.xv) < 0.15 && Math.abs(dx) > 0.3;
                     if (Math.abs(dx) < 1.5 || wallBlocked) {
                         this._jumpQueued = true;
                     }
@@ -1037,32 +1101,39 @@ const {
                 return;
             }
 
-            if (this.grounded && Math.abs(this.xv) < 0.1 && Math.abs(dx) > 0.4) {
+            if (
+                this.grounded &&
+                Math.abs(this.xv) < 0.1 &&
+                Math.abs(dx) > 0.4
+            ) {
                 this._pathStuck += dt;
-                if (this._pathStuck > 0.4) { this._path.shift(); this._pathStuck = 0; }
+                if (this._pathStuck > 0.4) {
+                    this._path.shift();
+                    this._pathStuck = 0;
+                }
             } else {
                 this._pathStuck = 0;
             }
 
-            if (Math.abs(dx) < 0.35) { this._path.shift(); this._pathStuck = 0; }
+            if (Math.abs(dx) < 0.35) {
+                this._path.shift();
+                this._pathStuck = 0;
+            }
         }
 
         _separateFromEnemies() {
             // const room = this.room;
             // const world = this.engine?.world;
             // if (!room || !world) return;
-
             // for (const z of room.indices) {
             //     for (const obj of room.zia[z]) {
             //         if (obj === this || !(obj instanceof MEnemy) || obj.dead) continue;
-
             //         const overlapX = (this.x + this.w / 2) - (obj.x + obj.w / 2);
             //         const overlapY = (this.y + this.h / 2) - (obj.y + obj.h / 2);
             //         const minDistX = (this.w + obj.w) / 2;
             //         const minDistY = (this.h + obj.h) / 2;
             //         const absX = Math.abs(overlapX);
             //         const absY = Math.abs(overlapY);
-
             //         if (absX < minDistX && absY < minDistY) {
             //             const push = (minDistX - absX) / 2;
             //             const prevX = this.x;
@@ -1082,7 +1153,6 @@ const {
             //     }
             // }
         }
-        
 
         /** @param {number} dt */
         tick(dt) {
@@ -1114,7 +1184,11 @@ const {
 
             //check for contact
             const player = this.engine?.player;
-            if (player && player.room === this.room && this.contactCooldown <= 0) {
+            if (
+                player &&
+                player.room === this.room &&
+                this.contactCooldown <= 0
+            ) {
                 //update both (certainty check)
                 this.updateHitbox();
                 player.updateHitbox();
@@ -1131,12 +1205,12 @@ const {
          * @param {MPlayer} player
          */
         onPlayerContact(player) {
-            const dy = (player.y + player.h / 2) - (this.y + this.h / 2);
-            
+            const dy = player.y + player.h / 2 - (this.y + this.h / 2);
+
             //player standing on enemy
             //if (dy < -0.1 && player.yv >= 0) return;
 
-            const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+            const dx = player.x + player.w / 2 - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 15;
             player.yv = -10;
             player.takeDamage(34);
@@ -1156,7 +1230,11 @@ const {
         }
 
         deathAlpha(ctx) {
-            ctx.globalAlpha = 1 - this._deathTimer / (this.constructor.deathAnimationTime ?? MEnemy.deathAnimationTime);
+            ctx.globalAlpha =
+                1 -
+                this._deathTimer /
+                    (this.constructor.deathAnimationTime ??
+                        MEnemy.deathAnimationTime);
         }
 
         render(ctx, camera, t, pixel) {
@@ -1168,13 +1246,13 @@ const {
     }
 
     /** MWorld class.
-     * 
+     *
      */
     class MWorld {
         /** Constructs an instance of MWorld.
-         * 
+         *
          * @typedef {{ type: typeof MObject, tileset: {[key: string]: SpriteRef} }} TileData
-         * 
+         *
          * @constructor
          * @param {MEngine} engine
          */
@@ -1217,19 +1295,26 @@ const {
 
                     //support both plain array rooms {} roomies yk
                     const roomDef = this.roomData[key];
-                    const bitmap = Array.isArray(roomDef) ? roomDef : roomDef.bitmap;
-                    
+                    const bitmap = Array.isArray(roomDef)
+                        ? roomDef
+                        : roomDef.bitmap;
+
                     //per-room entities take priority; fall back to globalEntityMap
-                    const entityMap = (!Array.isArray(roomDef) && roomDef.entities)
-                        ? roomDef.entities
-                        : globalEntityMap;
+                    const entityMap =
+                        !Array.isArray(roomDef) && roomDef.entities
+                            ? roomDef.entities
+                            : globalEntityMap;
 
                     const { width, height } = this.build(room, bitmap, tileMap);
                     room.width = width;
                     room.height = height;
-                    
-                    if (typeof PlatformGraph !== 'undefined') {
-                        room.graph = new PlatformGraph(bitmap, tileMap, this.engine);
+
+                    if (typeof PlatformGraph !== "undefined") {
+                        room.graph = new PlatformGraph(
+                            bitmap,
+                            tileMap,
+                            this.engine,
+                        );
                     }
 
                     this._spawnEntities(room, bitmap, entityMap);
@@ -1239,18 +1324,18 @@ const {
             }
         }
         /** Adds an object to a room of the MWorld.
-         * 
+         *
          * @param {MObject} room
-         * @param {MObject} obj 
+         * @param {MObject} obj
          * @param {number} [z=0]
          * @returns {void}
          */
-        add(room, obj, z=0) {
+        add(room, obj, z = 0) {
             if (!room.zia[z]) {
                 room.zia[z] = [];
                 // find the index at which to put z into indices
                 let i = 0;
-                while (i < room.indices.length && room.indices[i] < z) i ++;
+                while (i < room.indices.length && room.indices[i] < z) i++;
                 room.indices.splice(i, 0, z); // At index i, remove 0 elements, and insert z
             }
             room.zia[z].push(obj);
@@ -1261,8 +1346,7 @@ const {
         // TODO: ADD JSDOC!!!
         build(room, bitmap, tileMap) {
             //storage for future ref (maybe for an LOS)
-            room.bitmap = bitmap; 
-
+            room.bitmap = bitmap;
 
             let maxCols = 0;
 
@@ -1285,30 +1369,41 @@ const {
                     //diagonals treat out-of-bounds as empty, not solid
                     const solidDiag = (r, c) => {
                         if (r < 0 || r >= bitmap.length) return false;
-                        if (c < 0 || c >= (bitmap[r]?.length ?? 0)) return false;
+                        if (c < 0 || c >= (bitmap[r]?.length ?? 0))
+                            return false;
                         return bitmap[r][c] === ch;
                     };
 
-                    const N = solid(row-1, col);
-                    const E = solid(row,col+1);
-                    const S = solid(row+1, col);
-                    const W = solid(row, col-1);
+                    const N = solid(row - 1, col);
+                    const E = solid(row, col + 1);
+                    const S = solid(row + 1, col);
+                    const W = solid(row, col - 1);
 
-                    const NE = N && E && solidDiag(row-1, col+1);
-                    const SE = S && E && solidDiag(row+1, col+1);
-                    const SW = S && W && solidDiag(row+1, col-1);
-                    const NW = N && W && solidDiag(row-1, col-1);
-                    const key8 = (N ? 'y' : 'n') + (NE ? 'y' : 'n')
-                            + (E ? 'y' : 'n') + (SE ? 'y' : 'n')
-                            + (S ? 'y' : 'n') + (SW ? 'y' : 'n')
-                            + (W ? 'y' : 'n') + (NW ? 'y' : 'n');
+                    const NE = N && E && solidDiag(row - 1, col + 1);
+                    const SE = S && E && solidDiag(row + 1, col + 1);
+                    const SW = S && W && solidDiag(row + 1, col - 1);
+                    const NW = N && W && solidDiag(row - 1, col - 1);
+                    const key8 =
+                        (N ? "y" : "n") +
+                        (NE ? "y" : "n") +
+                        (E ? "y" : "n") +
+                        (SE ? "y" : "n") +
+                        (S ? "y" : "n") +
+                        (SW ? "y" : "n") +
+                        (W ? "y" : "n") +
+                        (NW ? "y" : "n");
 
                     //cardinals only, for tilesets that don't have diagonal variants
                     const key4 = key8[0] + key8[2] + key8[4] + key8[6];
-                    const sprite = (def.tileset[key8] ?? def.tileset[key4]) ?? def.tileset['nnnn'];
+                    const sprite =
+                        def.tileset[key8] ??
+                        def.tileset[key4] ??
+                        def.tileset["nnnn"];
                     if (!sprite) {
                         //remove later
-                        console.error(`WorldBuilder: missing sprite key "${key}" for '${ch}' at (${col},${row})`);
+                        console.error(
+                            `WorldBuilder: missing sprite key "${key}" for '${ch}' at (${col},${row})`,
+                        );
                         continue;
                     }
 
@@ -1358,7 +1453,6 @@ const {
         }
 
         transportEntity(entity) {
-
             // if (entity._transportLock) {
             //     entity.updateHitbox();
             //     return;
@@ -1387,7 +1481,7 @@ const {
                 entity.y -= height;
             }
             entity.updateHitbox();
-            
+
             //move enemy between rooms yes
             if (entity.room !== oldRoom) {
                 const arr = oldRoom.entities;
@@ -1397,10 +1491,20 @@ const {
                     this.addEntity(entity.room, entity);
                 }
 
-                if (entity === this.engine?.player && !entity._roomChangedThisFrame) {
+                if (
+                    entity === this.engine?.player &&
+                    !entity._roomChangedThisFrame
+                ) {
                     const dr = entity.room.row - oldRoom.row;
                     const dc = entity.room.col - oldRoom.col;
-                    const dir = dc > 0 ? 'right' : dc < 0 ? 'left' : dr > 0 ? 'bottom' : 'top';
+                    const dir =
+                        dc > 0
+                            ? "right"
+                            : dc < 0
+                              ? "left"
+                              : dr > 0
+                                ? "bottom"
+                                : "top";
                     entity._roomChangedThisFrame = true;
                     this.engine.onRoomChange?.(dir);
                 }
@@ -1409,8 +1513,8 @@ const {
 
         /** Iterates through the rooms with a callback. If the callback
          * returns a value, it breaks and returns that value.
-         * 
-         * @param {MObject => any} callback 
+         *
+         * @param {MObject => any} callback
          * @returns {any}
          */
         iterate(callback) {
@@ -1424,9 +1528,9 @@ const {
 
         /** Iterates through the z indexed array of a single room with a callback. If the callback
          * returns a value, it breaks and returns that value.
-         * 
+         *
          * @param {Object} room
-         * @param {MObject => any} callback 
+         * @param {MObject => any} callback
          * @returns {any}
          */
         iterateRoom(room, callback) {
@@ -1445,16 +1549,16 @@ const {
     }
 
     /** MCamera class. Moves between world and screen, also determines if in view.
-     * 
+     *
      */
     class MCamera {
         /** Constructs an instance of MCamera.
-         * 
+         *
          * @constructor
-         * @param {{ canvas: HTMLCanvasElement, tileSize?: number }} config 
+         * @param {{ canvas: HTMLCanvasElement, tileSize?: number }} config
          */
         constructor(config) {
-            const { canvas, tileSize,  resolution} = config;
+            const { canvas, tileSize, resolution } = config;
             this.res = resolution ?? 9;
             this.canvas = canvas;
             this.tsz = tileSize ?? 20;
@@ -1464,13 +1568,17 @@ const {
         }
 
         /** Gets canvas width and height. */
-        get w() { return this.canvas.effectiveWidth ?? this.canvas.width; }
-        get h() { return this.canvas.effectiveHeight ?? this.canvas.height; }
+        get w() {
+            return this.canvas.effectiveWidth ?? this.canvas.width;
+        }
+        get h() {
+            return this.canvas.effectiveHeight ?? this.canvas.height;
+        }
 
         /** Focus the camera at a particular (world) point.
-         * 
-         * @param {number} x 
-         * @param {number} y 
+         *
+         * @param {number} x
+         * @param {number} y
          * @returns {void}
          */
         // focus(x, y) {
@@ -1492,19 +1600,20 @@ const {
             this.viewBox.setWH(
                 snappedFX - this.w / this.tsz / 2,
                 snappedFY - this.h / this.tsz / 2,
-                this.w / this.tsz, this.h / this.tsz
+                this.w / this.tsz,
+                this.h / this.tsz,
             );
         }
 
         /** Focus the camera at the player.
-         * 
-         * @param {MPlayer} player 
+         *
+         * @param {MPlayer} player
          * @returns {void}
          */
         focusPlayer(player) {
             this.focus(player.x + player.w / 2, player.y + player.h / 2);
         }
-        
+
         /** Focusconstrain to room bounds, zoom in if room is smaller than viewport.
          *
          * @param {MPlayer} player
@@ -1532,29 +1641,32 @@ const {
             //clamp so the view never shows outside [0, room.width] x [0, room.height]
             const fx = Math.max(vw / 2, Math.min(room.width - vw / 2, cx));
             const fy = Math.max(vh / 2, Math.min(room.height - vh / 2, cy));
-            
+
             this.focus(
                 this.lockFocusX ? this.focusX : fx,
-                this.lockFocusY ? this.focusY : fy
+                this.lockFocusY ? this.focusY : fy,
             );
         }
 
         /** Returns true if the object is currently in view.
-         * 
-         * @param {*} obj 
+         *
+         * @param {*} obj
          * @returns {boolean}
          */
         inView(obj) {
             // MMimic is a special case, cz it can throw spike balls that are outside its view box
             // and i was too lazy to do stuff the proper way
             // so here we go lol
-            return obj instanceof MMimic || (obj?.dbox?.collision?.(this.viewBox) ?? false);
+            return (
+                obj instanceof MMimic ||
+                (obj?.dbox?.collision?.(this.viewBox) ?? false)
+            );
         }
 
         /** Takes world coordinates, returns screen coordinates.
-         * 
-         * @param {number} x 
-         * @param {number} y 
+         *
+         * @param {number} x
+         * @param {number} y
          * @returns {{ x: number, y: number }}
          */
         // worldToScreen(x, y) {
@@ -1585,15 +1697,21 @@ const {
         // }
         worldToScreen(x, y) {
             return {
-                x: Math.floor(x * this.tsz) - Math.floor(this.focusX * this.tsz) + Math.floor(this.w / 2),
-                y: Math.floor(y * this.tsz) - Math.floor(this.focusY * this.tsz) + Math.floor(this.h / 2),
+                x:
+                    Math.floor(x * this.tsz) -
+                    Math.floor(this.focusX * this.tsz) +
+                    Math.floor(this.w / 2),
+                y:
+                    Math.floor(y * this.tsz) -
+                    Math.floor(this.focusY * this.tsz) +
+                    Math.floor(this.h / 2),
             };
         }
 
         /** Takes screen coordinates, returns world coordinates.
-         * 
-         * @param {number} x 
-         * @param {number} y 
+         *
+         * @param {number} x
+         * @param {number} y
          * @returns {{ x: number, y: number }}
          */
         screenToWorld(x, y) {
@@ -1605,18 +1723,18 @@ const {
     }
 
     /** MRenderer class. Handles rendering logic.
-     * 
+     *
      */
     class MRenderer {
         /** Constructs an instance of MCamera.
-         * 
+         *
          * @constructor
          * @param {MEngine} engine
-         * @param {HTMLCanvasElement} canvas 
+         * @param {HTMLCanvasElement} canvas
          * @param {number} [tileSize=36]
          * @param {number} [resolution=9]
          */
-        constructor(engine, canvas, tileSize=36, resolution=9) {
+        constructor(engine, canvas, tileSize = 36, resolution = 9) {
             this.engine = engine;
             this.canvas = canvas;
             this.ctx = canvas.getContext("2d");
@@ -1624,9 +1742,13 @@ const {
             this.res = resolution;
             this.pixel = tileSize / resolution;
             this.basePixel = tileSize / resolution;
-            this.camera = new MCamera({ canvas: this.canvas, tileSize: this.tsz, resolution: this.res });
+            this.camera = new MCamera({
+                canvas: this.canvas,
+                tileSize: this.tsz,
+                resolution: this.res,
+            });
         }
-        
+
         /** Renders everything except the player */
         renderScene(t) {
             const room = this.engine.player.room;
@@ -1636,9 +1758,10 @@ const {
                 this.camera.focusPlayer(this.engine.player);
             }
             this.pixel = this.camera.tsz / this.res;
-            this.engine.world.iterateRoom(room, obj => {
+            this.engine.world.iterateRoom(room, (obj) => {
                 if (obj instanceof MPlayer) return; // skip player — fixes clip in snapshot
-                if (this.camera.inView(obj)) obj.render(this.ctx, this.camera, t, this.pixel);
+                if (this.camera.inView(obj))
+                    obj.render(this.ctx, this.camera, t, this.pixel);
             });
         }
 
@@ -1653,36 +1776,46 @@ const {
         render(t) {
             this.renderScene(t);
             this.renderPlayer(t);
-            if (this.debug) { 
-                this.engine.world.iterateRoom(this.engine.player.room, obj => {
-                    const hbox = obj.hbox ?? obj.dbox; 
-                    if (!hbox) return;
-                    const topLeft  = this.camera.worldToScreen(hbox.x1, hbox.y1);
-                    const botRight = this.camera.worldToScreen(hbox.x2, hbox.y2);
-                    this.ctx.save(); 
-                    this.ctx.strokeStyle = "red"; 
-                    this.ctx.lineWidth = 1; 
-                    this.ctx.strokeRect(
-                        topLeft.x, topLeft.y,
-                        botRight.x - topLeft.x, 
-                        botRight.y - topLeft.y
-                    );
-                    this.ctx.restore();
-                });
+            if (this.debug) {
+                this.engine.world.iterateRoom(
+                    this.engine.player.room,
+                    (obj) => {
+                        const hbox = obj.hbox ?? obj.dbox;
+                        if (!hbox) return;
+                        const topLeft = this.camera.worldToScreen(
+                            hbox.x1,
+                            hbox.y1,
+                        );
+                        const botRight = this.camera.worldToScreen(
+                            hbox.x2,
+                            hbox.y2,
+                        );
+                        this.ctx.save();
+                        this.ctx.strokeStyle = "red";
+                        this.ctx.lineWidth = 1;
+                        this.ctx.strokeRect(
+                            topLeft.x,
+                            topLeft.y,
+                            botRight.x - topLeft.x,
+                            botRight.y - topLeft.y,
+                        );
+                        this.ctx.restore();
+                    },
+                );
             }
         }
     }
 
     /** MEngine class. Handles platforming logic.
-     * 
+     *
      */
     class MEngine {
         /** Constructs an instance of MEngine.
-         * 
+         *
          * @constructor
          * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} [config={}]
          */
-        constructor(config={}) {
+        constructor(config = {}) {
             const { gravity, hvel, friction, jump, groundPoundMult } = config;
             this.gravity = gravity ?? 80;
             this.hvel = hvel ?? 10;
@@ -1697,21 +1830,21 @@ const {
         }
 
         /** Alternative to new MEngine.
-         * 
+         *
          * @param {{ gravity?: number, hvel?: number, friction?: number, jump?: number }} [options={}]
          * @returns {MEngine}
          */
-        static create(options={}) {
+        static create(options = {}) {
             return new MEngine(options);
         }
 
         /**
-         * 
-         * @param {number} sx 
-         * @param {number} sy 
-         * @param {number} w 
-         * @param {number} h 
-         * @param {(number, MObject) => SpriteRef} texturer 
+         *
+         * @param {number} sx
+         * @param {number} sy
+         * @param {number} w
+         * @param {number} h
+         * @param {(number, MObject) => SpriteRef} texturer
          */
         createPlayer(sx, sy, w, h, texturer) {
             this.player = new MPlayer(sx, sy, w, h, texturer);
@@ -1722,7 +1855,7 @@ const {
         }
 
         /** Set render configs
-         * 
+         *
          * @param {HTMLCanvasElement} canvas
          * @param {number} tileSize
          * @param {number} resolution
@@ -1733,12 +1866,10 @@ const {
             return this;
         }
 
-
-
         /** Tick step forward
-         * 
-         * @param {number} t  
-         * @param {number} dt 
+         *
+         * @param {number} t
+         * @param {number} dt
          * @returns {void}
          */
         tick(t, dt, events) {
@@ -1747,7 +1878,7 @@ const {
             this.events = events;
             this.eventsPrev = eventsPrev;
             this.lastDt = dt;
-            //for transistions 
+            //for transistions
             if (!this.renderer._skipRender) this.renderer.render(t);
 
             //this.renderer.render(t);
@@ -1765,8 +1896,9 @@ const {
             //this.player._transportLock = false;
             this.player._roomChangedThisFrame = false;
 
-            this.world.iterate(obj => {
-                if (obj !== this.player && typeof obj.tick === 'function') obj.tick(dt);
+            this.world.iterate((obj) => {
+                if (obj !== this.player && typeof obj.tick === "function")
+                    obj.tick(dt);
             });
         }
     }
@@ -1778,21 +1910,26 @@ const {
 
         constructor(x, y) {
             super(x, y, 2, 4, (t, self) => {
-                if (self.state === 'lighting') {
+                if (self.state === "lighting") {
                     const frames = gfx.props.misc.totemLightUp;
                     const frame = Math.min(
                         frames.length - 1,
-                        Math.floor(self.stateTime / MCheckpoint.LIGHT_UP_DURATION * frames.length)
+                        Math.floor(
+                            (self.stateTime / MCheckpoint.LIGHT_UP_DURATION) *
+                                frames.length,
+                        ),
                     );
                     return frames[frame];
                 }
-                if (self.state === 'on') {
+                if (self.state === "on") {
                     const frames = gfx.props.misc.totemOn;
-                    return frames[Math.floor(t * MCheckpoint.ANIM_FPS) % frames.length];
+                    return frames[
+                        Math.floor(t * MCheckpoint.ANIM_FPS) % frames.length
+                    ];
                 }
                 return gfx.props.misc.totemOff[0];
             });
-            this.state = 'off';
+            this.state = "off";
             this.stateTime = 0;
         }
 
@@ -1801,40 +1938,45 @@ const {
             const player = this.engine?.player;
             if (!player) return;
 
-            if (this.state === 'off') {
+            if (this.state === "off") {
                 if (player.room !== this.room) return;
-                const dx = (player.x + player.w / 2) - (this.x + 1);
-                const dy = (player.y + player.h / 2) - (this.y + 2);
-                if (Math.sqrt(dx * dx + dy * dy) <= MCheckpoint.ACTIVATE_RADIUS) {
+                const dx = player.x + player.w / 2 - (this.x + 1);
+                const dy = player.y + player.h / 2 - (this.y + 2);
+                if (
+                    Math.sqrt(dx * dx + dy * dy) <= MCheckpoint.ACTIVATE_RADIUS
+                ) {
                     this._activate(player);
                 }
-            } else if (this.state === 'lighting' && this.stateTime >= MCheckpoint.LIGHT_UP_DURATION) {
-                this.state = 'on';
+            } else if (
+                this.state === "lighting" &&
+                this.stateTime >= MCheckpoint.LIGHT_UP_DURATION
+            ) {
+                this.state = "on";
                 this.stateTime = 0;
             }
         }
 
         _activate(player) {
             //turn off every other checkpoint in the world
-            this.engine.world.iterate(obj => {
+            this.engine.world.iterate((obj) => {
                 if (obj instanceof MCheckpoint && obj !== this) {
-                    obj.state = 'off';
+                    obj.state = "off";
                     obj.stateTime = 0;
                 }
             });
 
-            this.state = 'lighting';
+            this.state = "lighting";
             this.stateTime = 0;
 
             //reposition the player's respawn point to the base of this totem
             player.sx = this.x + 1 - player.w / 2;
-            player.sy = this.y + 4  - player.h;
+            player.sy = this.y + 4 - player.h;
             player.sroom = this.room;
         }
     }
 
-    class MGauntletEntryPoint extends MDecorative {
-        static OPEN_BUBBLE_RADIUS = 4;/*
+    class MTeleportEntryPoint extends MDecorative {
+        static OPEN_BUBBLE_RADIUS = 4; /*
         static ANIM_FPS = 3;
         static DEBUG_RADIUS = false;*/
 
@@ -1845,12 +1987,12 @@ const {
             this.inRange = false;
 
             //html junk ask arrow
-            const overlay = document.getElementById('overlay');
+            const overlay = document.getElementById("overlay");
 
-            this._prompt = document.createElement('div');
-            this._prompt.className = 'npc-prompt';
-            this._prompt.textContent = 'SPACE to enter';
-            this._prompt.style.display = 'none';
+            this._prompt = document.createElement("div");
+            this._prompt.className = "npc-prompt";
+            this._prompt.textContent = "SPACE to enter";
+            this._prompt.style.display = "none";
             overlay.appendChild(this._prompt);
         }
 
@@ -1863,10 +2005,13 @@ const {
             const spaceJust = spaceNow && !eventsPrev.Space;
 
             //proximity check
-            const cx = this.x + 1, cy = this.y + 1.5;
-            const px = player.x + player.w / 2, py = player.y + player.h / 2;
+            const cx = this.x + 1,
+                cy = this.y + 1.5;
+            const px = player.x + player.w / 2,
+                py = player.y + player.h / 2;
             const dist = Math.hypot(px - cx, py - cy);
-            this.inRange = dist <= MNPC.TALK_RADIUS && this.room === player.room;
+            this.inRange =
+                dist <= MNPC.TALK_RADIUS && this.room === player.room;
 
             //advance n' open n' close on space
             if (this.inRange && spaceJust) {
@@ -1886,7 +2031,7 @@ const {
                 p.room = room;
                 // find spawn point in room
                 for (const e of room.entities) {
-                        if (e instanceof MGauntletSpawnPoint) {
+                    if (e instanceof MTeleportEntryPoint) {
                         p.x = e.x;
                         p.y = e.y;
                         break;
@@ -1902,15 +2047,18 @@ const {
             const camera = this.engine.renderer.camera;
 
             //pos element above the thing's head
-            const { x: sx, y: sy } = camera.worldToScreen(this.x + 1, this.y - 0.3);
+            const { x: sx, y: sy } = camera.worldToScreen(
+                this.x + 1,
+                this.y - 0.3,
+            );
 
             //proximity prompt stuffs
             if (this.inRange) {
                 this._prompt.style.left = `${sx}px`;
                 this._prompt.style.top = `${sy - 4}px`;
-                this._prompt.style.display = 'block';
+                this._prompt.style.display = "block";
             } else {
-                this._prompt.style.display = 'none';
+                this._prompt.style.display = "none";
             }
         }
 
@@ -1938,9 +2086,75 @@ const {
         }
     }
 
-    class MGauntletSpawnPoint extends MDecorative {
+    class MTeleportSpawnPoint extends MDecorative {
         constructor(x, y) {
             super(x, y, 1, 1, (t, self) => gfx.empty);
+        }
+    }
+
+    class MGauntletDoor extends MBody {
+        static ANIM_FPS = 15;
+        static ANIM_DURATION = 1;
+
+        constructor(x, y, roomSide) {
+            super(x, y, 1, 3, (t, self) => {
+                let frames = gfx.props.misc.gauntletDoorClose;
+                if (self._state == "open") {
+                    return frames[0];
+                } else if (self._state == "closing") {
+                    return frames[
+                        Math.floor(self._stateTimer * MGauntletDoor.ANIM_FPS)
+                    ];
+                } else if (self._state == "opening") {
+                    frames = gfx.props.misc.gauntletDoorOpen;
+                    return frames[
+                        Math.floor(self._stateTimer * MGauntletDoor.ANIM_FPS)
+                    ];
+                } else if (self._state == "closed") {
+                    frames = gfx.props.misc.gauntletDoorOpen;
+                    return frames[0];
+                }
+            });
+
+            this._state = "open";
+            this._roomSide = roomSide;
+            this.completed = false;
+
+            this._stateTimer = 0;
+        }
+
+        tick(dt) {
+            const player = this.engine?.player;
+            if (!player) return;
+
+            //proximity check
+            const cx = this.x + 1,
+                cy = this.y + 1.5;
+            const px = player.x + player.w / 2,
+                py = player.y + player.h / 2;
+
+            if (!this.completed && this.room == player.room) {
+                if (this._state == "open") {
+                    if (this._roomSide == "right") {
+                        if (player.x + player.w < this.x)
+                            this._state = "closing";
+                    } else if (this._roomSide == "left") {
+                        if (player.x > this.x + this.w) this._state = "closing";
+                    }
+                } else if (this._state == "closing") {
+                    this._stateTimer += dt;
+                    if (this._stateTimer > MGauntletDoor.ANIM_DURATION) {
+                        this._state = "closed";
+                        this._stateTimer = 0;
+                    }
+                }
+            } else {
+                this._state = "open";
+            }
+        }
+
+        render(ctx, camera, t, pixel) {
+            super.render(ctx, camera, t, pixel);
         }
     }
 
@@ -1949,14 +2163,16 @@ const {
         static ANIM_FPS = 3;
         static DEBUG_RADIUS = false;
 
-        constructor(x, y, dialogue = [], spriteKey = 'pakala') {
+        constructor(x, y, dialogue = [], spriteKey = "pakala") {
             super(x, y, 2, 3, (t, self) => {
                 const frames = gfx.props.npcs[self.spriteKey];
                 if (!frames) return gfx.props.npcs.pakala[0];
-                
-                //handle both animated arr and static 
+
+                //handle both animated arr and static
                 if (Array.isArray(frames)) {
-                    return frames[Math.floor(t * MNPC.ANIM_FPS) % frames.length];
+                    return frames[
+                        Math.floor(t * MNPC.ANIM_FPS) % frames.length
+                    ];
                 }
                 return frames;
             });
@@ -1967,17 +2183,17 @@ const {
             this.inRange = false;
 
             //html junk ask arrow
-            const overlay = document.getElementById('overlay');
+            const overlay = document.getElementById("overlay");
 
-            this._bubble = document.createElement('div');
-            this._bubble.className = 'npc-bubble';
-            this._bubble.style.display = 'none';
+            this._bubble = document.createElement("div");
+            this._bubble.className = "npc-bubble";
+            this._bubble.style.display = "none";
             overlay.appendChild(this._bubble);
 
-            this._prompt = document.createElement('div');
-            this._prompt.className = 'npc-prompt';
-            this._prompt.textContent = 'SPACE to talk';
-            this._prompt.style.display = 'none';
+            this._prompt = document.createElement("div");
+            this._prompt.className = "npc-prompt";
+            this._prompt.textContent = "SPACE to talk";
+            this._prompt.style.display = "none";
             overlay.appendChild(this._prompt);
         }
 
@@ -1990,10 +2206,13 @@ const {
             const spaceJust = spaceNow && !eventsPrev.Space;
 
             //proximity check
-            const cx = this.x + 1, cy = this.y + 1.5;
-            const px = player.x + player.w / 2, py = player.y + player.h / 2;
+            const cx = this.x + 1,
+                cy = this.y + 1.5;
+            const px = player.x + player.w / 2,
+                py = player.y + player.h / 2;
             const dist = Math.hypot(px - cx, py - cy);
-            this.inRange = dist <= MNPC.TALK_RADIUS && this.room === player.room;
+            this.inRange =
+                dist <= MNPC.TALK_RADIUS && this.room === player.room;
 
             //lose dialogue if player walks away
             if (!this.inRange) {
@@ -2004,8 +2223,7 @@ const {
             if (this.inRange && spaceJust) {
                 if (this.dialogueIndex === -1) {
                     this.dialogueIndex = 0;
-                }
-                else {
+                } else {
                     this.dialogueIndex++;
                     if (this.dialogueIndex >= this.dialogue.length) {
                         this.dialogueIndex = -1;
@@ -2021,32 +2239,36 @@ const {
             const camera = this.engine.renderer.camera;
 
             //pos both elements above the NPC's head
-            const { x: sx, y: sy } = camera.worldToScreen(this.x + 1, this.y - 0.3);
+            const { x: sx, y: sy } = camera.worldToScreen(
+                this.x + 1,
+                this.y - 0.3,
+            );
 
-            const talking = this.dialogueIndex >= 0 &&this.dialogueIndex < this.dialogue.length;
+            const talking =
+                this.dialogueIndex >= 0 &&
+                this.dialogueIndex < this.dialogue.length;
 
             //yap bubble, I HATE modifying CSS with JS
             if (talking) {
                 const line = this.dialogue[this.dialogueIndex];
                 const progress = `${this.dialogueIndex + 1} / ${this.dialogue.length}`;
                 this._bubble.innerHTML =
-                    `${line.replace(/\n/g, '<br>')}`+
+                    `${line.replace(/\n/g, "<br>")}` +
                     `<span class="npc-progress">${progress} &nbsp;[SPACE]</span>`;
                 this._bubble.style.left = `${sx}px`;
                 this._bubble.style.top = `${sy}px`;
-                this._bubble.style.display = 'block';
+                this._bubble.style.display = "block";
             } else {
-                this._bubble.style.display = 'none';
+                this._bubble.style.display = "none";
             }
 
             //proximity prompt stuffs
             if (this.inRange && !talking && this.dialogue.length > 0) {
                 this._prompt.style.left = `${sx}px`;
                 this._prompt.style.top = `${sy - 4}px`;
-                this._prompt.style.display = 'block';
-            } 
-            else {
-                this._prompt.style.display = 'none';
+                this._prompt.style.display = "block";
+            } else {
+                this._prompt.style.display = "none";
             }
         }
 
@@ -2075,7 +2297,6 @@ const {
         }
     }
 
-
     /**
      * builds a walkability graph from a room bitmap and runs BFS pathfinding
      * Nodes = tile positions where an entity can stand.
@@ -2091,28 +2312,31 @@ const {
             this.tileMap = tileMap;
             const jump = engine?.jump ?? 20;
             const gravity = engine?.gravity ?? 80;
-            this.JUMP_H = Math.max(1, Math.ceil((jump * jump) / (2 * gravity)) + 1);
+            this.JUMP_H = Math.max(
+                1,
+                Math.ceil((jump * jump) / (2 * gravity)) + 1,
+            );
             this.JUMP_W = this.JUMP_H + 3;
 
             this.nodes = this._build();
         }
 
         //help me
-        _solid(r, c) { 
-            return (this.bitmap[r]?.[c] ?? ' ') in this.tileMap; 
+        _solid(r, c) {
+            return (this.bitmap[r]?.[c] ?? " ") in this.tileMap;
         }
-        _open(r, c)  { 
-            return !this._solid(r, c); 
+        _open(r, c) {
+            return !this._solid(r, c);
         }
 
         /** Standable = open tile with a solid tile directly below */
-        _standable(r, c) { 
-            return this._open(r, c) && this._solid(r + 1, c); 
+        _standable(r, c) {
+            return this._open(r, c) && this._solid(r + 1, c);
         }
 
         _build() {
             const rows = this.bitmap.length;
-            const cols = Math.max(...this.bitmap.map(l => l.length));
+            const cols = Math.max(...this.bitmap.map((l) => l.length));
             const nodes = new Map();
 
             //create a node for every tile an entity can stand on
@@ -2120,9 +2344,9 @@ const {
                 for (let c = 0; c < cols; c++)
                     if (this._standable(r, c))
                         nodes.set(`${c},${r}`, { c, r, edges: [] });
-            
+
             //jump stuff
-            const JUMP_H = this.JUMP_H; 
+            const JUMP_H = this.JUMP_H;
             const JUMP_W = this.JUMP_W;
 
             //connect nodes with edges
@@ -2134,7 +2358,11 @@ const {
                     const nc = c + dir;
                     const nb = nodes.get(`${nc},${r}`);
                     if (nb && this._open(r, nc) && this._open(r - 1, nc))
-                        node.edges.push({ to: nb, move: dir > 0 ? 'right' : 'left', jump: false });
+                        node.edges.push({
+                            to: nb,
+                            move: dir > 0 ? "right" : "left",
+                            jump: false,
+                        });
                 }
 
                 //fall off edges into air column, land on lower node
@@ -2144,7 +2372,14 @@ const {
                         for (let dr = 1; dr <= 12; dr++) {
                             const nr = r + dr;
                             const nb = nodes.get(`${nc},${nr}`);
-                            if (nb) { node.edges.push({ to: nb, move: dir > 0 ? 'right' : 'left', jump: false }); break; }
+                            if (nb) {
+                                node.edges.push({
+                                    to: nb,
+                                    move: dir > 0 ? "right" : "left",
+                                    jump: false,
+                                });
+                                break;
+                            }
                             if (this._solid(nr, nc)) break;
                         }
                     }
@@ -2154,7 +2389,12 @@ const {
                 for (let dc = -JUMP_W; dc <= JUMP_W; dc++) {
                     for (let dr = 1; dr <= JUMP_H; dr++) {
                         const nb = nodes.get(`${c + dc},${r - dr}`);
-                        if (nb) node.edges.push({ to: nb, move: dc >= 0 ? 'right' : 'left', jump: true });
+                        if (nb)
+                            node.edges.push({
+                                to: nb,
+                                move: dc >= 0 ? "right" : "left",
+                                jump: true,
+                            });
                     }
                 }
             }
@@ -2189,7 +2429,12 @@ const {
             let key = goalKey;
             while (visited.get(key) !== null) {
                 const { from, edge } = visited.get(key);
-                path.unshift({ c: edge.to.c, r: edge.to.r, move: edge.move, jump: edge.jump });
+                path.unshift({
+                    c: edge.to.c,
+                    r: edge.to.r,
+                    move: edge.move,
+                    jump: edge.jump,
+                });
                 key = from;
             }
             return path;
@@ -2202,10 +2447,10 @@ const {
          */
         findPath(fx, fy, tx, ty) {
             const startKey = this._nearestKey(Math.round(fx), Math.floor(fy));
-            const goalKey  = this._nearestKey(Math.round(tx), Math.floor(ty));
+            const goalKey = this._nearestKey(Math.round(tx), Math.floor(ty));
 
-            if (!startKey || !goalKey)  return null;
-            if (startKey === goalKey)   return [];
+            if (!startKey || !goalKey) return null;
+            if (startKey === goalKey) return [];
 
             const start = this.nodes.get(startKey);
             const goal = this.nodes.get(goalKey);
@@ -2232,18 +2477,18 @@ const {
     }
 
     class MBlob extends MEnemy {
-        constructor(x, y, variant = 'g1') {
+        constructor(x, y, variant = "g1") {
             const sprites = gfx.enemies.slimes[variant];
-            const big = variant.endsWith('2');
-            const w = big ? 0.88 : 0.60;
+            const big = variant.endsWith("2");
+            const w = big ? 0.88 : 0.6;
             const h = big ? 0.77 : 0.55;
-            const hp = big ? 90: 30;
+            const hp = big ? 90 : 30;
 
             super(x, y, w, h, hp, (t, self) => {
                 if (self._hitFlash > 0) return sprites.hurt;
-                const fps= self.state === 'jump' ? 10 : 4;
+                const fps = self.state === "jump" ? 10 : 4;
                 const frames = sprites[self.state] ?? sprites.idle;
-                const frame  = Math.floor(t * fps) % frames.length;
+                const frame = Math.floor(t * fps) % frames.length;
                 return frames[frame];
             });
 
@@ -2253,14 +2498,14 @@ const {
             this.stallTimer = 0;
 
             //AI crap
-            this.aggroRange= big ? 8 : 6;
+            this.aggroRange = big ? 8 : 6;
             this.deAggroRange = big ? 12 : 9;
-            this.chaseMode = false;  
+            this.chaseMode = false;
             this.aggroLatch = 0;
-            
+
             //speed can be adjusted
             this.moveSpeed = big ? 4 : 10;
-        } 
+        }
 
         ai(dt) {
             const dist = this._playerDist();
@@ -2285,7 +2530,7 @@ const {
             }
 
             //animation state
-            this.state = this.grounded ? 'idle' : 'jump';
+            this.state = this.grounded ? "idle" : "jump";
         }
 
         _runChase(dt) {
@@ -2297,8 +2542,8 @@ const {
             } else {
                 //graph went bleh
                 const hDir = this._playerHDir();
-                if (hDir ===  1) this._moveRight = true;
-                if (hDir === -1) this._moveLeft  = true;
+                if (hDir === 1) this._moveRight = true;
+                if (hDir === -1) this._moveLeft = true;
                 this.facing = hDir || this.facing;
             }
         }
@@ -2306,18 +2551,17 @@ const {
         /** Patrol: walk back and forth, jump periodically. */
         _runPatrol(dt) {
             if (this.patrolDir === 1) this._moveRight = true;
-            else this._moveLeft  = true;
+            else this._moveLeft = true;
             this.facing = this.patrolDir;
 
             if (this.grounded && Math.abs(this.xv) < 0.15) {
                 this.stallTimer += dt;
                 if (this.stallTimer > 0.25) {
                     this.patrolDir *= -1;
-                    this.stallTimer  = 0;
-                    this.stateTime  = 0;
+                    this.stallTimer = 0;
+                    this.stateTime = 0;
                 }
-            }
-            else {
+            } else {
                 this.stallTimer = 0;
             }
 
@@ -2338,13 +2582,16 @@ const {
          * @param {'brickBreakWall'|'grassyBreakWall'|'mushroomBreakWall'} variant
          * @param {'left'|'right'} breakSide  - which face the ball must strike
          */
-        constructor(x, y, variant = 'brickBreakWall', breakSide = 'right') {
+        constructor(x, y, variant = "brickBreakWall", breakSide = "right") {
             super(x, y, 2, 3, (t, self) => {
                 if (self._breaking) {
                     const frames = gfx.props.misc.breakWallHit;
                     const fi = Math.min(
                         frames.length - 1,
-                        Math.floor((self._breakTimer / MBreakWall.BREAK_DURATION) * frames.length)
+                        Math.floor(
+                            (self._breakTimer / MBreakWall.BREAK_DURATION) *
+                                frames.length,
+                        ),
                     );
                     return frames[fi];
                 }
@@ -2363,12 +2610,14 @@ const {
         onBallHit(ball) {
             if (this._breaking) return false;
 
-            const ballCx= ball.x + ball.w / 2;
+            const ballCx = ball.x + ball.w / 2;
             const wallCx = this.x + this.w / 2;
             const fromRight = ballCx >= wallCx && ball.xv <= 0;
             const fromLeft = ballCx <= wallCx && ball.xv >= 0;
 
-            const valid = (this.breakSide === 'right' && fromRight) || (this.breakSide === 'left'  && fromLeft);
+            const valid =
+                (this.breakSide === "right" && fromRight) ||
+                (this.breakSide === "left" && fromLeft);
             if (!valid) return false;
 
             this._breaking = true;
@@ -2398,16 +2647,19 @@ const {
     class MSpear extends MEntity {
         static STUCK_DURATION = 3.0;
         static DAMAGE = 25;
-        static GRAVITY= 18;
+        static GRAVITY = 18;
 
         constructor(owner, xv, yv) {
             //hittttbooooxxxxxx
-            const w = 1.2, h = 0.25;
+            const w = 1.2,
+                h = 0.25;
             super(
                 owner.x + (owner.facing === 1 ? owner.w : -w),
                 owner.y + owner.h * 0.2,
-                w, h, 1,
-                () => gfx.enemies.minitaur.spear
+                w,
+                h,
+                1,
+                () => gfx.enemies.minitaur.spear,
             );
 
             this.engine = owner.engine;
@@ -2431,11 +2683,11 @@ const {
             //rotate around the hitbox center
             const { x, y } = camera.worldToScreen(
                 this.x + this.w / 2,
-                this.y + this.h / 2
+                this.y + this.h / 2,
             );
             ctx.save();
             ctx.translate(x, y);
-            
+
             //apply rot
             ctx.rotate(this.angle + Math.PI / 2);
             sprite.draw(ctx, -sw / 2, -sh / 2, pixel);
@@ -2444,8 +2696,16 @@ const {
 
         _updateTipHitbox() {
             const tipSize = 0.2;
-            const tipX = (this.x + this.w / 2) + Math.cos(this.angle) * (this.w / 2) - tipSize / 2;
-            const tipY = (this.y + this.h / 2) + Math.sin(this.angle) * (this.w / 2) - tipSize / 2;
+            const tipX =
+                this.x +
+                this.w / 2 +
+                Math.cos(this.angle) * (this.w / 2) -
+                tipSize / 2;
+            const tipY =
+                this.y +
+                this.h / 2 +
+                Math.sin(this.angle) * (this.w / 2) -
+                tipSize / 2;
             this.hbox.setWH(tipX, tipY, tipSize, tipSize);
         }
 
@@ -2489,9 +2749,10 @@ const {
             this.transport();
             const yt = this.touching(MSolid, world);
             if (yt) {
-                this.y = this.yv > 0
-                    ? yt.hbox.y1 - this.h - epsilon
-                    : yt.hbox.y2 + epsilon;
+                this.y =
+                    this.yv > 0
+                        ? yt.hbox.y1 - this.h - epsilon
+                        : yt.hbox.y2 + epsilon;
                 this.transport();
                 this._stick();
                 return;
@@ -2504,7 +2765,7 @@ const {
                 this._updateTipHitbox();
                 player.updateHitbox();
                 if (this.hbox.collision(player.hbox)) {
-                    const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+                    const dx = player.x + player.w / 2 - (this.x + this.w / 2);
                     player.xv = Math.sign(dx || Math.sign(this.xv)) * 12;
                     player.yv = -8;
                     player.takeDamage(MSpear.DAMAGE);
@@ -2537,22 +2798,23 @@ const {
 
     /** MMinitaur: spear-throwing enemy. Patrols, aggros on sight, winds up and throws <3 */
     class MMinitaur extends MEnemy {
-        static THROW_RANGE= 14;
-        static THROW_WINDUP= 0.55;
-        static THROW_COOLDOWN= 2.8;
+        static THROW_RANGE = 14;
+        static THROW_WINDUP = 0.55;
+        static THROW_COOLDOWN = 2.8;
         static THROW_SPEED = 18;
-        static ANIM_FPS = { 
-            idle: 4, 
-            run: 8, 
-            jump: 6, 
-            fall: 6 
+        static ANIM_FPS = {
+            idle: 4,
+            run: 8,
+            jump: 6,
+            fall: 6,
         };
 
         constructor(x, y) {
             super(x, y, 1.0, 1.4, 60, (t, self) => {
                 if (self._hitFlash > 0) return gfx.enemies.minitaur.hurt;
-                const frames = gfx.enemies.minitaur[self.state]
-                            ?? gfx.enemies.minitaur.idle;
+                const frames =
+                    gfx.enemies.minitaur[self.state] ??
+                    gfx.enemies.minitaur.idle;
                 //single SpriteRef
                 if (!Array.isArray(frames)) return frames;
                 const fps = MMinitaur.ANIM_FPS[self.state] ?? 4;
@@ -2570,7 +2832,7 @@ const {
             this._throwCooldown = 0;
 
             this._spear = null;
-                this._retrieving = false;
+            this._retrieving = false;
         }
 
         /** Called by MSpear once it has either stuck or hit the player. */
@@ -2583,15 +2845,15 @@ const {
             const player = this.engine?.player;
             if (!player) return;
 
-            const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
-            const dy = (player.y + player.h / 2) - (this.y + this.h / 2);
+            const dx = player.x + player.w / 2 - (this.x + this.w / 2);
+            const dy = player.y + player.h / 2 - (this.y + this.h / 2);
             const len = Math.sqrt(dx * dx + dy * dy) || 1;
             const spd = MMinitaur.THROW_SPEED;
 
             const spear = new MSpear(
                 this,
                 (dx / len) * spd,
-                (dy / len) * spd * 0.75
+                (dy / len) * spd * 0.75,
             );
             this._spear = spear;
             this._spearActive = true;
@@ -2624,19 +2886,27 @@ const {
             const x1 = Math.round(player.x + player.w / 2);
             const y1 = Math.round(player.y + player.h / 2);
 
-            const dx = Math.abs(x1 - x), sx = x < x1 ? 1 : -1;
-            const dy = -Math.abs(y1 - y), sy = y < y1 ? 1 : -1;
+            const dx = Math.abs(x1 - x),
+                sx = x < x1 ? 1 : -1;
+            const dy = -Math.abs(y1 - y),
+                sy = y < y1 ? 1 : -1;
             let err = dx + dy;
 
             while (true) {
                 if (x === x1 && y === y1) return true;
-                const ch = bitmap[y]?.[x] ?? ' ';
+                const ch = bitmap[y]?.[x] ?? " ";
                 const def = tileMap[ch];
                 //blocked by any solid tile
                 if (def && def.type === MSolid) return false;
                 const e2 = 2 * err;
-                if (e2 >= dy) { err += dy; x += sx; }
-                if (e2 <= dx) { err += dx; y += sy; }
+                if (e2 >= dy) {
+                    err += dy;
+                    x += sx;
+                }
+                if (e2 <= dx) {
+                    err += dx;
+                    y += sy;
+                }
             }
         }
 
@@ -2647,12 +2917,13 @@ const {
             if (this._facingLock > 0) {
                 this._facingLock -= dt;
                 this._moveLeft = this._moveRight = false;
-                this.state = 'idle';
+                this.state = "idle";
                 return;
             }
 
             if (this._retrieving && this._spear) {
-                const dx = (this._spear.x + this._spear.w / 2) - (this.x + this.w / 2);
+                const dx =
+                    this._spear.x + this._spear.w / 2 - (this.x + this.w / 2);
                 if (Math.abs(dx) < 0.8) {
                     this._spear.remove();
                     this.onSpearDone();
@@ -2660,28 +2931,28 @@ const {
                     if (dx > 0) this._moveRight = true;
                     else this._moveLeft = true;
                     this.facing = dx > 0 ? 1 : -1;
-                    this.state = Math.abs(this.xv) > 0.5 ? 'run' : 'idle';
+                    this.state = Math.abs(this.xv) > 0.5 ? "run" : "idle";
                 }
                 return;
             }
 
             this._throwCooldown = Math.max(0, this._throwCooldown - dt);
-            
-
 
             const dist = this._playerDist();
-            const los  = this._hasLOS(); // NEW
+            const los = this._hasLOS(); // NEW
 
             // only aggro if player is in range AND visible
-            if (!this.chaseMode && dist <= this.aggroRange && los) this.chaseMode = true;
+            if (!this.chaseMode && dist <= this.aggroRange && los)
+                this.chaseMode = true;
             // drop aggro if out of range OR lost sight for a moment
-            if ( this.chaseMode && (dist > this.deAggroRange || !los))  this.chaseMode = false;
+            if (this.chaseMode && (dist > this.deAggroRange || !los))
+                this.chaseMode = false;
 
             //windup stand still, face player, then release
             if (this._throwing) {
                 this._windupTimer += dt;
                 this.facing = this._playerHDir() || this.facing;
-                this.state = 'idle';
+                this.state = "idle";
                 if (this._windupTimer >= MMinitaur.THROW_WINDUP) {
                     this._throwing = false;
                     this._windupTimer = 0;
@@ -2692,11 +2963,13 @@ const {
             }
 
             //dicied to start a throw
-            if (this.chaseMode
-                && !this._spearActive
-                && this._throwCooldown <= 0
-                && this.grounded
-                && dist <= MMinitaur.THROW_RANGE) {
+            if (
+                this.chaseMode &&
+                !this._spearActive &&
+                this._throwCooldown <= 0 &&
+                this.grounded &&
+                dist <= MMinitaur.THROW_RANGE
+            ) {
                 this._throwing = true;
                 this._windupTimer = 0;
                 return;
@@ -2709,8 +2982,8 @@ const {
                     this._followPath(dt);
                 } else {
                     const hDir = this._playerHDir();
-                    if (hDir ===  1) this._moveRight = true;
-                    if (hDir === -1) this._moveLeft  = true;
+                    if (hDir === 1) this._moveRight = true;
+                    if (hDir === -1) this._moveLeft = true;
                     //this.facing = hDir || this.facing;
                     if (hDir && hDir !== this.facing) {
                         this.facing = hDir;
@@ -2735,10 +3008,14 @@ const {
                 }
             }
 
-            //anim state 
+            //anim state
             this.state = !this.grounded
-                ? (this.yv < 0 ? 'jump' : 'fall')
-                : (Math.abs(this.xv) > 0.5 ? 'run' : 'idle');
+                ? this.yv < 0
+                    ? "jump"
+                    : "fall"
+                : Math.abs(this.xv) > 0.5
+                  ? "run"
+                  : "idle";
         }
 
         render(ctx, camera, t, pixel) {
@@ -2746,8 +3023,9 @@ const {
             this.deathAlpha(ctx);
             const { x, y } = camera.worldToScreen(this.x, this.y);
             const sprite = this.texturer(t, this);
-            const offsetX = ((this.w * camera.tsz - sprite.w * pixel) / 2);
-            const offsetY = this.h * camera.tsz - sprite.h * pixel + pixel*1.3;
+            const offsetX = (this.w * camera.tsz - sprite.w * pixel) / 2;
+            const offsetY =
+                this.h * camera.tsz - sprite.h * pixel + pixel * 1.3;
             sprite.draw(ctx, x + offsetX, y + offsetY, pixel, this.facing ?? 1);
             ctx.restore();
 
@@ -2756,7 +3034,7 @@ const {
                 const spearSprite = gfx.enemies.minitaur.spear;
                 const { x: sx, y: sy } = camera.worldToScreen(
                     this.x + this.w / 2 + this.facing * 0.9,
-                    this.y + this.h * 0.4
+                    this.y + this.h * 0.4,
                 );
                 const sw = spearSprite.w * pixel;
                 const sh = spearSprite.h * pixel;
@@ -2767,7 +3045,7 @@ const {
                 spearSprite.draw(ctx, -sw / 2, -sh / 2, pixel);
                 ctx.restore();
             }
-        }   
+        }
     }
 
     /** MMimic: enemy mimicking player, can throw spike balls à la MPlayer. */
@@ -2783,10 +3061,18 @@ const {
 
             super(x, y, 0.97, 1.4, 100, (t, self) => {
                 if (self._hitFlash > 0) return gfx.enemies.mimic.hurt;
-                const state = self.state ?? 'idle';
-                const carryMap = { idle: 'carryidle', run: 'carryrun', jump: 'carryjump', fall: 'carryfall' };
-                const holding = self.ball && (self.engine.slowMo || self.dragging || self.carrying);
-                const spriteState = holding && carryMap[state] ? carryMap[state] : state;
+                const state = self.state ?? "idle";
+                const carryMap = {
+                    idle: "carryidle",
+                    run: "carryrun",
+                    jump: "carryjump",
+                    fall: "carryfall",
+                };
+                const holding =
+                    self.ball &&
+                    (self.engine.slowMo || self.dragging || self.carrying);
+                const spriteState =
+                    holding && carryMap[state] ? carryMap[state] : state;
                 const frames = sprites[spriteState] ?? sprites.idle;
                 const fps = ANIM_FPS[state] ?? 6;
                 const count = Object.keys(frames).length;
@@ -2794,38 +3080,46 @@ const {
 
                 //if you prefer chaining if else statements you need help
                 switch (state) {
-                    case 'jump':
-                    case 'fall': {
-                        frame = Math.min(count - 1, Math.floor((self.airTime ?? 0) * fps));
+                    case "jump":
+                    case "fall": {
+                        frame = Math.min(
+                            count - 1,
+                            Math.floor((self.airTime ?? 0) * fps),
+                        );
                         break;
                     }
-                    case 'groundpound': {
+                    case "groundpound": {
                         frame = 0;
                         break;
                     }
-                    case 'groundpoundimpact': {
+                    case "groundpoundimpact": {
                         //play impact frames forward once then hold last
-                        frame = Math.min(count - 1, Math.floor((self.impactTime ?? 0) * fps));
+                        frame = Math.min(
+                            count - 1,
+                            Math.floor((self.impactTime ?? 0) * fps),
+                        );
                         break;
                     }
-                    case 'throw': {
+                    case "throw": {
                         const dx = self.dragX - self.dragInitX;
                         const dy = self.dragY - self.dragInitY;
                         const len = Math.sqrt(dx * dx + dy * dy);
-                        frame = Math.floor(Math.min(len / self.maxDrag, 1) * (count - 1));
+                        frame = Math.floor(
+                            Math.min(len / self.maxDrag, 1) * (count - 1),
+                        );
                         break;
                     }
                     default: {
                         frame = Math.floor(t * fps) % count;
                     }
                 }
-                
+
                 //just in case yk?
                 frame = Math.max(0, Math.min(count - 1, frame));
                 return frames[frame];
             });
 
-            this.sprites = sprites;/*
+            this.sprites = sprites; /*
             this.patrolDir = 1;
             this.jumpCooldown = 1 + Math.random() * 1.5;
             this.stallTimer = 0;
@@ -2835,7 +3129,7 @@ const {
             this.deAggroRange = big ? 12 : 9;
             this.chaseMode = false;  
             this.aggroLatch = 0;*/
-            
+
             //speed can be adjusted
             this.moveSpeed = 8;
 
@@ -2848,7 +3142,7 @@ const {
             this._throwTimer = 0;
             this._throwDuration = 0;
             this.tpBall = false;
-        } 
+        }
 
         ai(dt) {
             const dist = this._playerDist();
@@ -2863,7 +3157,7 @@ const {
 
         _runChase(dt) {
             this._ballTimer = 0;
-            this.moveSpeed = this.engine.hvel * 4 / 5;
+            this.moveSpeed = (this.engine.hvel * 4) / 5;
 
             //use the graph to navigate
             this._updatePath(dt, 0.5);
@@ -2874,7 +3168,7 @@ const {
                 //graph went bleh
                 const hDir = this._playerHDir();
                 if (hDir === 1) this._moveRight = true;
-                if (hDir === -1) this._moveLeft  = true;
+                if (hDir === -1) this._moveLeft = true;
                 this.facing = hDir || this.facing;
             }
         }
@@ -2924,8 +3218,14 @@ const {
                     const g = this.engine.gravity;
                     const delx = p.x - this.x;
                     const dely = p.y - this.y;
-                    let xv = delx * Math.pow(1 / 4 * g * g / (delx * delx + dely * dely), 1 / 4);
-                    let yv = (dely * xv - 1 / 2 * g * delx * delx / xv) / delx;
+                    let xv =
+                        delx *
+                        Math.pow(
+                            ((1 / 4) * g * g) / (delx * delx + dely * dely),
+                            1 / 4,
+                        );
+                    let yv =
+                        (dely * xv - ((1 / 2) * g * delx * delx) / xv) / delx;
                     const maxDrag = this.constructor.maxDrag;
                     if (xv * xv + yv * yv > maxDrag * maxDrag) {
                         const factor = maxDrag / Math.sqrt(xv * xv + yv * yv);
@@ -2957,7 +3257,7 @@ const {
         _runPatrol(dt) {
             this._ballTimer = 0;
             if (this.patrolDir === 1) this._moveRight = true;
-            else this._moveLeft  = true;
+            else this._moveLeft = true;
             this.facing = this.patrolDir;
 
             if (this.grounded && Math.abs(this.xv) < 0.15) {
@@ -2979,9 +3279,9 @@ const {
         }
 
         /** Renders the thing
-         * 
-         * @param {CanvasRenderingContext2D} ctx 
-         * @param {MCamera} camera 
+         *
+         * @param {CanvasRenderingContext2D} ctx
+         * @param {MCamera} camera
          * @param {number} t
          * @param {number} pixel
          * @returns {void}
@@ -2990,16 +3290,16 @@ const {
             ctx.save();
             this.deathAlpha(ctx);
             super.render(ctx, camera, t, pixel);
-            if (this.ball?.room == this.room) 
+            if (this.ball?.room == this.room)
                 this.ball?.render?.(ctx, camera, t, pixel);
             ctx.restore();
         }
 
         /** Tick the game forward
-         * 
-         * @param {number} dt 
+         *
+         * @param {number} dt
          * @returns {void}
-         */ 
+         */
         tick(dt) {
             super.tick(dt);
             if (this.carrying && !this.ball) {
@@ -3009,10 +3309,7 @@ const {
                 //real throw
                 //this.carrying = false;
                 //this.ball = null;
-                this.ball = new MBall(this,
-                    this.throwxv,
-                    this.throwyv
-                );
+                this.ball = new MBall(this, this.throwxv, this.throwyv);
                 this.thrown = false;
                 this.throwing = true;
             } else if (this.tpBall && this.ball) {
@@ -3026,17 +3323,31 @@ const {
                 this.throwing = false;
                 this.ball = null;
                 this.transport();
-                
+
                 //push mimic out of any wall they landed in
                 const world = this.engine.world;
                 this.updateHitbox();
                 if (this.touching(MSolid, world)) {
                     //try nudging in the direction the ball was travelling
                     const nudges = [
-                        [Math.sign(this.xv) * (this.w + this.engine.epsilon), 0],
-                        [0, Math.sign(this.yv) * (this.h + this.engine.epsilon)],
-                        [-Math.sign(this.xv) * (this.w + this.engine.epsilon), 0],
-                        [0, -Math.sign(this.yv) * (this.h + this.engine.epsilon)],
+                        [
+                            Math.sign(this.xv) * (this.w + this.engine.epsilon),
+                            0,
+                        ],
+                        [
+                            0,
+                            Math.sign(this.yv) * (this.h + this.engine.epsilon),
+                        ],
+                        [
+                            -Math.sign(this.xv) *
+                                (this.w + this.engine.epsilon),
+                            0,
+                        ],
+                        [
+                            0,
+                            -Math.sign(this.yv) *
+                                (this.h + this.engine.epsilon),
+                        ],
                     ];
                     for (const [nx, ny] of nudges) {
                         this.x += nx;
@@ -3050,7 +3361,7 @@ const {
                 }
                 this.transport();
             }
-            this.ball?.tick?.(dt);/*
+            this.ball?.tick?.(dt); /*
             //exit slowmo on keypress or on landing also pretty important
             if (this.engine.slowMo) {
                 if (events.KeyA || events.KeyD || events.KeyW || events.KeyS) {
@@ -3074,7 +3385,7 @@ const {
             if (this.ball && this.carrying) {
                 this.ball.xv = 0;
                 this.ball.yv = 0;
-                this.ball.x = (this.x + this.w / 2 - this.ball.w / 2) + 0.05;
+                this.ball.x = this.x + this.w / 2 - this.ball.w / 2 + 0.05;
                 this.ball.y = this.y - 0.55;
                 this.ball.room = this.room;
                 this.ball.updateHitbox();
@@ -3096,33 +3407,34 @@ const {
         static ANIM_FPS = 8;
 
         static CONFIGS = {
-            ball:{ 
-                symKey: null, 
-                glowColor: 'rgba(214, 205, 191, 0.35)' 
+            ball: {
+                symKey: null,
+                glowColor: "rgba(214, 205, 191, 0.35)",
             },
-            groundedTeleport: { 
-                symKey: 'pwrSym_groundedTeleport',  
-                glowColor: 'rgba(165,212,202, 0.35)'
+            groundedTeleport: {
+                symKey: "pwrSym_groundedTeleport",
+                glowColor: "rgba(165,212,202, 0.35)",
             },
-            groundPound: { 
-                symKey: 'pwrSym_groundPound',
-                glowColor: 'rgba(168,0,0,0.35)'
+            groundPound: {
+                symKey: "pwrSym_groundPound",
+                glowColor: "rgba(168,0,0,0.35)",
             },
-            fullTeleport: { 
-                symKey: 'pwrSym_fullTeleport',
-                glowColor: 'rgba(165, 212, 202, 0.55)'
+            fullTeleport: {
+                symKey: "pwrSym_fullTeleport",
+                glowColor: "rgba(165, 212, 202, 0.55)",
             },
         };
- 
+
         constructor(x, y, powerType) {
             super(x, y, 2, 3, (t, self) => {
-                
                 if (self.collected) return gfx.props.misc.pwrtwroff;
                 const frames = gfx.props.misc.pwrtwron;
-                return frames[Math.floor(t * MPowerPillar.ANIM_FPS) % frames.length];
+                return frames[
+                    Math.floor(t * MPowerPillar.ANIM_FPS) % frames.length
+                ];
             });
             this.powerType = powerType;
-            this.collected  = false;
+            this.collected = false;
         }
 
         tick(dt) {
@@ -3130,8 +3442,8 @@ const {
             const player = this.engine?.player;
             if (!player || player.room !== this.room) return;
 
-            const dx = (player.x + player.w / 2) - (this.x + 1);
-            const dy = (player.y + player.h / 2) - (this.y + 1.5);
+            const dx = player.x + player.w / 2 - (this.x + 1);
+            const dy = player.y + player.h / 2 - (this.y + 1.5);
             if (Math.sqrt(dx * dx + dy * dy) <= MPowerPillar.COLLECT_RADIUS) {
                 this._collect(player);
             }
@@ -3144,7 +3456,10 @@ const {
 
             const cam = this.engine?.renderer?.camera;
             if (cam && this.engine) {
-                const { x: sx, y: sy } = cam.worldToScreen(this.x + 1, this.y - 1);
+                const { x: sx, y: sy } = cam.worldToScreen(
+                    this.x + 1,
+                    this.y - 1,
+                );
                 (this.engine._collectAnims ??= []).push({
                     type: this.powerType,
                     progress: 0,
@@ -3166,8 +3481,12 @@ const {
                 : gfx.player.spikeBall;
             if (!symSprite) return;
 
-            const bob = Math.sin(t * MPowerPillar.BOB_SPEED) * MPowerPillar.BOB_AMP;
-            const { x: sx, y: sy } = camera.worldToScreen(this.x + 1, this.y - 1);
+            const bob =
+                Math.sin(t * MPowerPillar.BOB_SPEED) * MPowerPillar.BOB_AMP;
+            const { x: sx, y: sy } = camera.worldToScreen(
+                this.x + 1,
+                this.y - 1,
+            );
             const sw = symSprite.w * pixel;
             const sh = symSprite.h * pixel;
 
@@ -3185,14 +3504,18 @@ const {
         }
     }
 
-
     class MSwarmerUnit extends MEnemy {
         constructor(x, y, controller) {
             super(x, y, 0.45, 0.45, 15, (t, self) => {
                 if (self._hitFlash > 0) return gfx.enemies.wingShroom.hit;
                 if (self.dead) {
                     const frames = gfx.enemies.wingShroom.die;
-                    return frames[Math.min(Math.floor(self.stateTime * 8), frames.length - 1)];
+                    return frames[
+                        Math.min(
+                            Math.floor(self.stateTime * 8),
+                            frames.length - 1,
+                        )
+                    ];
                 }
                 const frames = gfx.enemies.wingShroom.idle;
                 return frames[Math.floor(t * 14) % frames.length];
@@ -3233,8 +3556,8 @@ const {
             if (ctrl?.units) {
                 for (const unit of ctrl.units) {
                     if (unit === this || unit.dead) continue;
-                    const sdx = (this.x + this.w / 2) - (unit.x + unit.w / 2);
-                    const sdy = (this.y + this.h / 2) - (unit.y + unit.h / 2);
+                    const sdx = this.x + this.w / 2 - (unit.x + unit.w / 2);
+                    const sdy = this.y + this.h / 2 - (unit.y + unit.h / 2);
                     const sd = Math.sqrt(sdx * sdx + sdy * sdy) || 1;
                     if (sd < 1.4) {
                         this.xv += (sdx / sd) * 18 * dt;
@@ -3253,8 +3576,8 @@ const {
             this.yv *= Math.pow(0.001, dt);
             const spd = Math.sqrt(this.xv * this.xv + this.yv * this.yv);
             if (spd > this.moveSpeed) {
-                this.xv = this.xv / spd * this.moveSpeed;
-                this.yv = this.yv / spd * this.moveSpeed;
+                this.xv = (this.xv / spd) * this.moveSpeed;
+                this.yv = (this.yv / spd) * this.moveSpeed;
             }
 
             this.x += this.xv * dt;
@@ -3279,7 +3602,11 @@ const {
 
             this.facing = this.xv >= 0 ? 1 : -1;
 
-            if (player && player.room === this.room && this.contactCooldown <= 0) {
+            if (
+                player &&
+                player.room === this.room &&
+                this.contactCooldown <= 0
+            ) {
                 this.updateHitbox();
                 player.updateHitbox();
                 if (this.hbox.collision(player.hbox)) {
@@ -3290,7 +3617,7 @@ const {
         }
 
         onPlayerContact(player) {
-            const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+            const dx = player.x + player.w / 2 - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 5;
             player.yv = -3;
             player.takeDamage(8);
@@ -3322,7 +3649,7 @@ const {
                     const unit = new MSwarmerUnit(
                         this.x + Math.cos(angle) * 0.8,
                         this.y + Math.sin(angle) * 0.8,
-                        this
+                        this,
                     );
                     this.units.push(unit);
                     this.engine.world.addEntity(this.room, unit);
@@ -3335,13 +3662,15 @@ const {
                 return;
             }
 
-            const dx = (player.x + player.w / 2) - this.x;
-            const dy = (player.y + player.h / 2) - this.y;
+            const dx = player.x + player.w / 2 - this.x;
+            const dy = player.y + player.h / 2 - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (!this.aggroed && dist <= this.aggroRange) this.aggroed = true;
             if (this.aggroed && dist > this.deAggroRange) {
-                const anyClose = this.units.some(u => !u.dead && u._playerDist() <= this.deAggroRange);
+                const anyClose = this.units.some(
+                    (u) => !u.dead && u._playerDist() <= this.deAggroRange,
+                );
                 if (!anyClose) this.aggroed = false;
             }
         }
@@ -3356,7 +3685,12 @@ const {
                 if (self._hitFlash > 0) return gfx.enemies.wingShroom.hit;
                 if (self.dead) {
                     const frames = gfx.enemies.wingShroom.die;
-                    return frames[Math.min(Math.floor(self.stateTime * 8), frames.length - 1)];
+                    return frames[
+                        Math.min(
+                            Math.floor(self.stateTime * 8),
+                            frames.length - 1,
+                        )
+                    ];
                 }
                 const frames = gfx.enemies.wingShroom.idle;
                 return frames[Math.floor(t * 6) % frames.length];
@@ -3381,12 +3715,10 @@ const {
             const player = this.engine?.player;
             const dist = this._playerDist();
 
-            const targetX = dist <= this.aggroRange
-                ? player.x + player.w / 2
-                : this._homeX;
-            const targetY = dist <= this.aggroRange
-                ? player.y + player.h / 2
-                : this._homeY;
+            const targetX =
+                dist <= this.aggroRange ? player.x + player.w / 2 : this._homeX;
+            const targetY =
+                dist <= this.aggroRange ? player.y + player.h / 2 : this._homeY;
 
             const dx = targetX - (this.x + this.w / 2);
             const dy = targetY - (this.y + this.h / 2);
@@ -3399,8 +3731,8 @@ const {
             this.yv *= Math.pow(0.001, dt);
             const spd = Math.sqrt(this.xv * this.xv + this.yv * this.yv);
             if (spd > this.moveSpeed) {
-                this.xv = this.xv / spd * this.moveSpeed;
-                this.yv = this.yv / spd * this.moveSpeed;
+                this.xv = (this.xv / spd) * this.moveSpeed;
+                this.yv = (this.yv / spd) * this.moveSpeed;
             }
 
             this.x += this.xv * dt;
@@ -3425,7 +3757,11 @@ const {
 
             this.facing = this.xv >= 0 ? 1 : -1;
 
-            if (player && player.room === this.room && this.contactCooldown <= 0) {
+            if (
+                player &&
+                player.room === this.room &&
+                this.contactCooldown <= 0
+            ) {
                 this.updateHitbox();
                 player.updateHitbox();
                 if (this.hbox.collision(player.hbox)) {
@@ -3436,39 +3772,42 @@ const {
         }
 
         onPlayerContact(player) {
-            const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+            const dx = player.x + player.w / 2 - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 8;
             player.yv = -5;
             player.takeDamage(12);
         }
     }
 
-
     class MPothead extends MEnemy {
         static ATTACK_RANGE = 3.5;
-        static ATTACK_WINDUP = 0.13; 
+        static ATTACK_WINDUP = 0.13;
         static ATTACK_COOLDOWN = 2.2;
         static HIT_FLASH_DURATION = 0.25;
         static ANIM_FPS = {
-            idle: 3, 
-            run: 6, 
-            attack: 8 
+            idle: 3,
+            run: 6,
+            attack: 8,
         };
 
         constructor(x, y) {
             super(x, y, 0.9, 1.3, 120, (t, self) => {
                 if (self._hitFlash > 0) return gfx.enemies.pothead.hit;
 
-                const state  = self.state ?? 'idle';
-                const frames = gfx.enemies.pothead[state] ?? gfx.enemies.pothead.idle;
+                const state = self.state ?? "idle";
+                const frames =
+                    gfx.enemies.pothead[state] ?? gfx.enemies.pothead.idle;
 
                 if (!Array.isArray(frames)) return frames;
 
                 const fps = MPothead.ANIM_FPS[state] ?? 4;
 
-                if (state === 'attack') {
+                if (state === "attack") {
                     //clamp to last frame don't loop the attack animation
-                    const fi = Math.min(frames.length - 1, Math.floor(self._attackTimer * fps));
+                    const fi = Math.min(
+                        frames.length - 1,
+                        Math.floor(self._attackTimer * fps),
+                    );
                     return frames[fi];
                 }
                 return frames[Math.floor(t * fps) % frames.length];
@@ -3496,17 +3835,22 @@ const {
 
             const dist = this._playerDist();
 
-            if (!this.chaseMode && dist <= this.aggroRange) this.chaseMode = true;
-            if (this.chaseMode && dist > this.deAggroRange) this.chaseMode = false;
+            if (!this.chaseMode && dist <= this.aggroRange)
+                this.chaseMode = true;
+            if (this.chaseMode && dist > this.deAggroRange)
+                this.chaseMode = false;
 
             //attack in progress
             if (this._attacking) {
                 this._attackTimer += dt;
                 this.facing = this._playerHDir() || this.facing;
-                this.state  = 'attack';
+                this.state = "attack";
 
-                //fire damage at the lunge-up frame 
-                if (!this._damageLanded && this._attackTimer >= MPothead.ATTACK_WINDUP) {
+                //fire damage at the lunge-up frame
+                if (
+                    !this._damageLanded &&
+                    this._attackTimer >= MPothead.ATTACK_WINDUP
+                ) {
                     this._damageLanded = true;
                     const player = this.engine?.player;
                     if (player && this.hbox.collision(player.hbox)) {
@@ -3515,7 +3859,9 @@ const {
                 }
 
                 //3 frames at 8fps = 0.375s total
-                const totalDuration = gfx.enemies.pothead.attack.length / MPothead.ANIM_FPS.attack;
+                const totalDuration =
+                    gfx.enemies.pothead.attack.length /
+                    MPothead.ANIM_FPS.attack;
                 if (this._attackTimer >= totalDuration) {
                     this._attacking = false;
                     this._attackTimer = 0;
@@ -3526,11 +3872,15 @@ const {
             }
 
             //start attack
-            if (this.chaseMode && this._attackCooldown <= 0 && dist <= MPothead.ATTACK_RANGE) {
+            if (
+                this.chaseMode &&
+                this._attackCooldown <= 0 &&
+                dist <= MPothead.ATTACK_RANGE
+            ) {
                 this._attacking = true;
                 this._attackTimer = 0;
                 this._damageLanded = false;
-                this.state = 'attack';
+                this.state = "attack";
                 return;
             }
 
@@ -3539,11 +3889,10 @@ const {
                 this._updatePath(dt, 0.5);
                 if (this._path?.length) {
                     this._followPath(dt);
-                } 
-                else {
+                } else {
                     const hDir = this._playerHDir();
-                    if (hDir ===  1) this._moveRight = true;
-                    if (hDir === -1) this._moveLeft  = true;
+                    if (hDir === 1) this._moveRight = true;
+                    if (hDir === -1) this._moveLeft = true;
                     if (hDir && hDir !== this.facing) {
                         this.facing = hDir;
                         this._facingLock = 0.2;
@@ -3552,14 +3901,14 @@ const {
             } else {
                 //patrol
                 if (this.patrolDir === 1) this._moveRight = true;
-                else this._moveLeft  = true;
+                else this._moveLeft = true;
                 this.facing = this.patrolDir;
 
                 if (this.grounded && Math.abs(this.xv) < 0.15) {
                     this.stallTimer += dt;
-                    if (this.stallTimer > 0.25) { 
-                        this.patrolDir *= -1; 
-                        this.stallTimer = -0.4; 
+                    if (this.stallTimer > 0.25) {
+                        this.patrolDir *= -1;
+                        this.stallTimer = -0.4;
                     }
                 } else {
                     this.stallTimer = 0;
@@ -3567,43 +3916,48 @@ const {
 
                 this.jumpCooldown -= dt;
                 if (this.grounded && this.jumpCooldown <= 0) {
-                    this._jumpQueued  = true;
+                    this._jumpQueued = true;
                     this.jumpCooldown = 1.5 + Math.random() * 2;
                 }
             }
 
-            //jump sprite is nonexestant 
-            this.state = !this.grounded? 'idle' : (Math.abs(this.xv) > 0.5 ? 'run' : 'idle');
+            //jump sprite is nonexestant
+            this.state = !this.grounded
+                ? "idle"
+                : Math.abs(this.xv) > 0.5
+                  ? "run"
+                  : "idle";
         }
 
         onPlayerContact(player) {
             //the pothead lunges upward so player gets popped into the air
-            const dx = (player.x + player.w / 2) - (this.x + this.w / 2);
+            const dx = player.x + player.w / 2 - (this.x + this.w / 2);
             player.xv = Math.sign(dx || 1) * 5;
             player.yv = -14;
             player.takeDamage(25);
         }
     }
 
-    return { 
-        MDecorative, 
-        MSolid, 
-        MHazard, 
-        MEntity, 
-        MPlayer, 
-        MEnemy, 
-        MEngine, 
-        MCheckpoint, 
-        MGauntletEntryPoint,
-        MGauntletSpawnPoint,
-        MNPC, 
-        MBlob, 
+    return {
+        MDecorative,
+        MSolid,
+        MHazard,
+        MEntity,
+        MPlayer,
+        MEnemy,
+        MEngine,
+        MCheckpoint,
+        MTeleportEntryPoint,
+        MTeleportSpawnPoint,
+        MGauntletDoor,
+        MNPC,
+        MBlob,
         MBreakWall,
         MMinitaur,
         MMimic,
         MPowerPillar,
         MFlyer,
         MSwarmer,
-        MPothead
+        MPothead,
     };
 })();
