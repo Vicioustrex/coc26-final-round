@@ -770,7 +770,7 @@ const roomTemplates = {
             "                             BBB   ",
             "             P                      ",
             "                                   ",
-            "            e                      ",
+            "            e    5                 ",
             "       HH bbbbb                    ",
             "      BBBbbbbbbbBBbbb  BB          ",
             "      BBBBbbbbbbBBBBbbbbb     S    ",
@@ -782,6 +782,7 @@ const roomTemplates = {
             "BBBBBBBBBBBBBBBBBBBBBBBBbbbbBBBBBBB",
         ],
         entities: {
+            '5': (x, y) => new MPowerPillar(x, y - 1.8, 'wallJump'),
             'H': (x, y) => new MHatPoint(x, y),
             'E': (x, y) => new MBlob(x, y, 'g2'),
             'e': (x, y) => new MBlob(x, y, 'g1'),
