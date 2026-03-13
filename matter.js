@@ -247,6 +247,8 @@ const {
             this.contactCooldown = 0;
             this.maxHealth = maxHealth;
             this.health = this.maxHealth;
+            this.coyote = 0;
+            this.coyoteLimit = 0.2;
         }
 
         /** Update hitbox
@@ -329,13 +331,20 @@ const {
             if (this.touching(MSolid, world)) {
                 this.grounded = true;
                 this.y -= this.yv * dt;
-                if (events.KeyW && this.yv > 0) {
-                    this.yv = -jump;
-                } else {
+                if (this.yv > 0) {
+                    this.coyote = 0;
                     this.yv = 0;
                 }
                 this.transport();
+            } else {
+                this.coyote += dt;
             }
+
+            if (this.coyote <= this.coyoteLimit && events.KeyW) {
+                this.coyote = Infinity;
+                this.yv = -jump;
+            }
+
             if (this.touching(MHazard, world)) {
                 this.x = this.sx;
                 this.y = this.sy;
