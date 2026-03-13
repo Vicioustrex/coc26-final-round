@@ -19,6 +19,7 @@ const {
     MFlyer,
     MSwarmer,
     MPothead,
+    MHatPoint,
 } = (() => {
     /** MBox: an AABB hitbox implementation.
      *
@@ -247,8 +248,6 @@ const {
             this.contactCooldown = 0;
             this.maxHealth = maxHealth;
             this.health = this.maxHealth;
-            this.coyote = 0;
-            this.coyoteLimit = 0.2;
         }
 
         /** Update hitbox
@@ -329,22 +328,15 @@ const {
             this.y += this.yv * dt;
             this.transport();
             if (this.touching(MSolid, world)) {
+                this.grounded = true;
                 this.y -= this.yv * dt;
-                if (this.yv > 0) {
-                    this.grounded = true;
-                    this.coyote = 0;
+                if (events.KeyW && this.yv > 0) {
+                    this.yv = -jump;
+                } else {
+                    this.yv = 0;
                 }
-                this.yv = 0;
                 this.transport();
-            } else {
-                this.coyote += dt;
             }
-
-            if (this.coyote <= this.coyoteLimit && events.KeyW) {
-                this.coyote = Infinity;
-                this.yv = -jump;
-            }
-
             if (this.touching(MHazard, world)) {
                 this.x = this.sx;
                 this.y = this.sy;
@@ -3422,11 +3414,11 @@ const {
             },
             groundedTeleport: {
                 symKey: "pwrSym_groundedTeleport",
-                glowColor: "rgba(165, 212, 202, 0.35)",
+                glowColor: "rgba(165,212,202, 0.35)",
             },
             groundPound: {
                 symKey: "pwrSym_groundPound",
-                glowColor: "rgba(168, 0, 0, 0.35)",
+                glowColor: "rgba(168,0,0,0.35)",
             },
             fullTeleport: {
                 symKey: "pwrSym_fullTeleport",
@@ -3947,6 +3939,43 @@ const {
         }
     }
 
+    class MHatPoint extends MDecorative {
+        static COLLECT_RADIUS = 1.2;
+        static BOB_SPEED = 3;
+        static BOB_AMP = 2;
+        static ANIM_FPS = 6;
+
+        constructor(x, y) {
+            super(x, y, 0.6, 0.6, (t, self) => {
+                if (self.collected) return gfx.empty;
+                const frames = gfx.props.misc.hatPoint;
+                return frames[Math.floor(t * MHatPoint.ANIM_FPS) % frames.length];
+            });
+            this.collected = false;
+        }
+
+        tick(dt) {
+            if (this.collected) return;
+            const player = this.engine?.player;
+            if (!player || player.room !== this.room) return;
+
+            const dx = player.x + player.w / 2 - (this.x + 0.3);
+            const dy = player.y + player.h / 2 - (this.y + 0.3);
+            if (Math.sqrt(dx * dx + dy * dy) <= MHatPoint.COLLECT_RADIUS) {
+                this.collected = true;
+                this.engine.hatPoints = (this.engine.hatPoints ?? 0) + 1;
+            }
+        }
+
+        render(ctx, camera, t, pixel) {
+            if (this.collected) return;
+            const bob = Math.sin(t * MHatPoint.BOB_SPEED) * MHatPoint.BOB_AMP;
+            const { x, y } = camera.worldToScreen(this.x, this.y);
+            const sprite = this.texturer(t, this);
+            sprite.draw(ctx, x, y + bob, pixel);
+        }
+    }
+
     return {
         MDecorative,
         MSolid,
@@ -3968,5 +3997,6 @@ const {
         MFlyer,
         MSwarmer,
         MPothead,
+        MHatPoint,
     };
 })();

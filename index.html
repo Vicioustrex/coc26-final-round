@@ -206,6 +206,7 @@
         const addShake = (power) => shakes.push(new Shake(power));
         engine.onGroundPound = () => addShake(10);
         engine.groundPoundMult = 2;
+        engine.hatPoints = 0;
         const ANIM_FPS = {
             idle: 4,
             run: 8,
@@ -215,6 +216,7 @@
             groundpoundimpact: 10,
             throw: 12,
         };
+
 
         const tileMap = {
             "#": { type: MSolid, tileset: gfx.tiles.A },
@@ -355,7 +357,7 @@
          * @param {MPlayer}  player
          * @param {number}   pixel - engine.renderer.pixel
          */
-        function renderHUD(ctx, player, pixel) {
+        function renderHUD(ctx, player, pixel, t) {
             //hearts
             const MAX_HEARTS = 3;
             const filledHearts = Math.ceil(
@@ -375,6 +377,28 @@
                         : gfx.player.heartEmpty;
                 sprite.draw(ctx, marginX + i * (heartW + gap), marginY, pixel);
             }
+
+            // hat points counter
+            const hatFrames = gfx.props.misc.hatPoint;
+            const hatSprite = hatFrames[Math.floor(t * 6) % hatFrames.length];
+            const hatW = hatSprite.w * pixel;
+            const hatH = hatSprite.h * pixel;
+            const hatX = width - hatW - Math.round(pixel * 3);
+            const hatY = Math.round(pixel * 2);
+
+            hatSprite.draw(ctx, hatX, hatY, pixel);
+
+            ctx.save();
+            ctx.font = `bold ${Math.round(pixel * 5)}px monospace`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(
+                String(engine.hatPoints ?? 0),
+                hatX - Math.round(pixel * 1.5),
+                hatY + hatH / 2,
+            );
+            ctx.restore();
 
             //power icons
             const powerOrder = [
@@ -794,7 +818,7 @@
                 }
             }
 
-            renderHUD(ctx, engine.player, engine.renderer.basePixel);
+            renderHUD(ctx, engine.player, engine.renderer.basePixel, t);
 
             //minimap
             renderMinimap();

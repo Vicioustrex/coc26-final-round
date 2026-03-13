@@ -768,10 +768,10 @@ const roomTemplates = {
             "                            BBBBB  ",
             "                            BBBBB  ",
             "                             BBB   ",
-            "                                   ",
+            "             P                      ",
             "                                   ",
             "            e                      ",
-            "          bbbbb                  P ",
+            "          bbbbb  H                 ",
             "      BBBbbbbbbbBBbbb  BB          ",
             "      BBBBbbbbbbBBBBbbbbb     S    ",
             "     BBBBBbbbbBBBBBBbbbbbbbBBBBBBBB",
@@ -782,6 +782,7 @@ const roomTemplates = {
             "BBBBBBBBBBBBBBBBBBBBBBBBbbbbBBBBBBB",
         ],
         entities: {
+            'H': (x, y) => new MHatPoint(x, y),
             'E': (x, y) => new MBlob(x, y, 'g2'),
             'e': (x, y) => new MBlob(x, y, 'g1'),
             'S': (x, y) => new MNPC(x, y - 0.5, [
@@ -814,6 +815,7 @@ const roomTemplates = {
             "BBBBBBBBBBBBBBBBBBBBBBBBBBBB",
         ],
         entities: {
+            //'H': (x, y) => new MHatPoint(x, y),
             e: (x, y) => new MBlob(x, y, "g1"),
         },
     },
