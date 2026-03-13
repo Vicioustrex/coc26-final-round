@@ -338,6 +338,7 @@ const {
                 this.transport();
             }
             if (this.touching(MHazard, world)) {
+                this.onDeath?.();
                 this.x = this.sx;
                 this.y = this.sy;
                 this.room = this.sroom;
@@ -605,6 +606,23 @@ const {
             }
         }
 
+        onDeath() {
+            const dr = this.sroom.row - this.room.row;
+            const dc = this.sroom.col - this.room.col;
+            if (Math.abs(dr) + Math.abs(dc) >= 1) {
+                const dir =
+                    dc > 0 && dc > Math.abs(dr)
+                        ? "right"
+                        : dc < 0 && -dc > Math.abs(dr)
+                            ? "left"
+                            : dr > 0 && dr >= Math.abs(dc)
+                            ? "bottom"
+                            : "top";
+                this._roomChangedThisFrame = true;
+                this.engine.onRoomChange?.(dir);
+            }
+        }
+
         /** Tick the game forward
          *
          * @param {number} dt
@@ -709,19 +727,16 @@ const {
                         const dr = this.ball.room.row - this.room.row;
                         const dc = this.ball.room.col - this.room.col;
                         this.room = this.ball.room;
-                        // if to adjacent room, otherwise way too complicated
-                        if (Math.abs(dr) + Math.abs(dc) == 1) {
-                            const dir =
-                                dc > 0
-                                    ? "right"
-                                    : dc < 0
-                                      ? "left"
-                                      : dr > 0
-                                        ? "bottom"
-                                        : "top";
-                            this._roomChangedThisFrame = true;
-                            this.engine.onRoomChange?.(dir);
-                        }
+                        const dir =
+                            dc > 0 && dc > Math.abs(dr)
+                                ? "right"
+                                : dc < 0 && -dc > Math.abs(dr)
+                                    ? "left"
+                                    : dr > 0 && dr >= Math.abs(dc)
+                                    ? "bottom"
+                                    : "top";
+                        this._roomChangedThisFrame = true;
+                        this.engine.onRoomChange?.(dir);
                     }
                     this.transport();
                     this.engine.slowMo = true;
@@ -1499,11 +1514,11 @@ const {
                     const dr = entity.room.row - oldRoom.row;
                     const dc = entity.room.col - oldRoom.col;
                     const dir =
-                        dc > 0
+                        dc > 0 && dc > Math.abs(dr)
                             ? "right"
-                            : dc < 0
-                              ? "left"
-                              : dr > 0
+                            : dc < 0 && -dc > Math.abs(dr)
+                                ? "left"
+                                : dr > 0 && dr >= Math.abs(dc)
                                 ? "bottom"
                                 : "top";
                     entity._roomChangedThisFrame = true;
@@ -1885,6 +1900,7 @@ const {
             //this.renderer.render(t);
             this.player.tick(dt, events, eventsPrev);
             if (this.player.health <= 0) {
+                this.player.onDeath?.();
                 this.player.x = this.player.sx;
                 this.player.y = this.player.sy;
                 this.player.room = this.player.sroom;

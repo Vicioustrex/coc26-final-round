@@ -8289,7 +8289,7 @@ for (const [key, interior] of Object.entries(tileInteriors)) {
     gfxData.tiles[key] = generateAutoTileset(interior);
 }
 
-const spritesheet = new Spritesheet(2048, 2048);
+const spritesheet = new Spritesheet(1024, 1024);
 const gfx = spritesheet.store(palette, gfxData);
 
 gfx.player.groundpoundimpact = {
