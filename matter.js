@@ -658,12 +658,12 @@ const {
                 const probe = 0.15;
                 if (events.KeyD) {
                     this.x += probe; this.updateHitbox();
-                    if (this.touching(MSolid, world)) { this.wallSliding = true; this.wallDir = 1; }
+                    if (this.touching(MSolid, this.engine.world)) { this.wallSliding = true; this.wallDir = 1; }
                     this.x -= probe; this.updateHitbox();
                 }
                 if (!this.wallSliding && events.KeyA) {
                     this.x -= probe; this.updateHitbox();
-                    if (this.touching(MSolid, world)) { this.wallSliding = true; this.wallDir = -1; }
+                    if (this.touching(MSolid, this.engine.world)) { this.wallSliding = true; this.wallDir = -1; }
                     this.x += probe; this.updateHitbox();
                 }
             }
