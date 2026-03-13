@@ -329,9 +329,9 @@ const {
             this.y += this.yv * dt;
             this.transport();
             if (this.touching(MSolid, world)) {
-                this.grounded = true;
                 this.y -= this.yv * dt;
                 if (this.yv > 0) {
+                    this.grounded = true;
                     this.coyote = 0;
                 }
                 this.yv = 0;
@@ -3422,11 +3422,11 @@ const {
             },
             groundedTeleport: {
                 symKey: "pwrSym_groundedTeleport",
-                glowColor: "rgba(165,212,202, 0.35)",
+                glowColor: "rgba(165, 212, 202, 0.35)",
             },
             groundPound: {
                 symKey: "pwrSym_groundPound",
-                glowColor: "rgba(168,0,0,0.35)",
+                glowColor: "rgba(168, 0, 0, 0.35)",
             },
             fullTeleport: {
                 symKey: "pwrSym_fullTeleport",
